@@ -377,6 +377,214 @@ body {
   }
 }
 
+/* ════════════════════════════════════════════
+   PLATFORM TOUR
+════════════════════════════════════════════ */
+.tour-trigger-btn {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  background: var(--amber);
+  border: none;
+  color: white;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  transition: all 0.2s;
+  z-index: 40;
+}
+
+.tour-trigger-btn:hover {
+  background: rgba(201,147,90,0.8);
+  transform: translateY(-2px);
+}
+
+.tour-modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 100;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.tour-modal.hidden {
+  display: none;
+}
+
+.tour-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0,0,0,0.5);
+  backdrop-filter: blur(2px);
+}
+
+.tour-card {
+  position: relative;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 480px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+  animation: tourCardIn 0.3s ease-out;
+}
+
+@keyframes tourCardIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95) translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+.tour-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--tx-2);
+  cursor: pointer;
+  padding: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  z-index: 101;
+}
+
+.tour-close:hover {
+  color: var(--tx-1);
+  transform: rotate(90deg);
+}
+
+.tour-content {
+  padding: 2.5rem 2rem 2rem 2rem;
+  min-height: 320px;
+}
+
+.tour-step {
+  display: none;
+  text-align: center;
+  animation: tourStepIn 0.4s ease-out;
+}
+
+.tour-step:not(.hidden) {
+  display: block;
+}
+
+@keyframes tourStepIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.tour-icon {
+  width: 64px;
+  height: 64px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 1.2rem;
+}
+
+.tour-step h3 {
+  font-size: 1.3rem;
+  font-weight: 600;
+  color: var(--tx-1);
+  margin-bottom: 0.8rem;
+}
+
+.tour-step p {
+  font-size: 0.95rem;
+  color: var(--tx-2);
+  line-height: 1.6;
+  margin: 0.6rem 0;
+}
+
+.tour-nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1.5rem 2rem;
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+  border-radius: 0 0 12px 12px;
+  gap: 1rem;
+}
+
+.tour-btn-prev,
+.tour-btn-next {
+  background: var(--amber);
+  border: none;
+  color: white;
+  padding: 0.7rem 1.2rem;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.tour-btn-prev:hover:not(:disabled),
+.tour-btn-next:hover:not(:disabled) {
+  background: rgba(201,147,90,0.8);
+  transform: translateY(-2px);
+}
+
+.tour-btn-prev:disabled,
+.tour-btn-next:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.tour-counter {
+  font-size: 0.8rem;
+  color: var(--tx-3);
+  font-weight: 500;
+}
+
+@media (max-width: 640px) {
+  .tour-card {
+    width: 95%;
+    max-height: 85vh;
+  }
+  .tour-content {
+    padding: 2rem 1.5rem 1.5rem;
+  }
+  .tour-nav {
+    padding: 1rem 1.5rem;
+    flex-direction: column;
+  }
+  .tour-btn-prev,
+  .tour-btn-next {
+    width: 100%;
+  }
+}
+
 @media (min-width: 1440px) { :root { --chat-w: 340px; } }
 </style>
 </head>
@@ -459,6 +667,15 @@ body {
 <div id="lobby">
   <div class="lobby-wrap">
 
+    <!-- Tour Button -->
+    <button id="tour-btn" class="tour-trigger-btn" onclick="startTour()" title="Learn how to join a meeting">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M12 16v-4M12 8h.01"></path>
+      </svg>
+      <span>How it works</span>
+    </button>
+
     <div class="lobby-brand">
       <div class="brand-logo">
         <div class="brand-logo-mark">
@@ -529,6 +746,14 @@ body {
         <p class="form-sub">Generate a unique room with a shareable link.</p>
 
         <div class="field">
+          <label>Your Display Name</label>
+          <div class="field-input-wrap">
+            <span class="field-icon"><svg width="15" height="15"><use href="#ic-user"/></svg></span>
+            <input id="create-name-input" type="text" placeholder="e.g. Alice" autocomplete="off"/>
+          </div>
+        </div>
+
+        <div class="field">
           <label>Room Name</label>
           <div class="field-input-wrap">
             <span class="field-icon"><svg width="15" height="15"><use href="#ic-room"/></svg></span>
@@ -545,10 +770,10 @@ body {
         <div id="create-error-msg"></div>
 
         <div id="room-created-info" style="display:none; margin-top: 1.2rem; padding: 0.9rem; background: var(--green-dim); border: 1px solid rgba(106,170,122,0.25); border-radius: var(--r-md);">
-          <div style="font-size: 0.75rem; color: var(--tx-3); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem;">Room Created</div>
+          <div style="font-size: 0.75rem; color: var(--tx-3); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem;">Meeting Created</div>
           <div style="font-size: 0.8rem; color: var(--tx-2); margin-bottom: 0.8rem; word-break: break-all;">
             <strong id="created-room-name"></strong> <br>
-            <span style="color: var(--tx-3);">ID: <code id="created-room-id" style="background: rgba(0,0,0,0.2); padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; font-size: 0.75rem;"></code></span>
+            <span style="color: var(--tx-3);">Code: <code id="created-room-code" style="background: rgba(0,0,0,0.2); padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; font-size: 0.85rem; font-weight: 600;"></code></span>
           </div>
           <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem;">
             <input type="text" id="meeting-url-display" readonly style="flex:1; background: var(--bg-3); border: 1px solid var(--bdr); border-radius: var(--r-sm); padding: 0.5rem 0.7rem; font-size: 0.75rem; color: var(--tx-2); font-family: monospace; cursor: text;"/>
@@ -557,6 +782,10 @@ body {
           <button class="btn-join" id="join-created-btn" onclick="joinCreatedRoom()" style="margin-top: 0.5rem;">
             <span class="btn-text">Join This Room</span>
           </button>
+          <div style="background: var(--amber-dim, rgba(201,147,90,0.1)); border: 1px solid var(--amber, rgba(201,147,90,0.3)); padding: 0.7rem; border-radius: 6px; margin-top: 0.8rem; font-size: 0.75rem; color: var(--tx-2);">
+            <p style="margin: 0 0 0.4rem; font-weight: 500; color: var(--amber, #c9935a);">⭐ Admin Tip:</p>
+            <p style="margin: 0;">When you click "Join This Room" above, your name will be auto-filled as the creator. <strong>Keep this name the same</strong> to become the room admin and get the ability to remove unwanted participants.</p>
+          </div>
         </div>
 
         <div class="lobby-divider"><span>instant &amp; unique</span></div>
@@ -682,12 +911,101 @@ body {
 
 <div id="toast"></div>
 
+<!-- Tour Modal -->
+<div id="tour-modal" class="tour-modal hidden">
+  <div class="tour-overlay" onclick="endTour()"></div>
+  <div class="tour-card">
+    <button class="tour-close" onclick="endTour()">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <line x1="18" y1="6" x2="6" y2="18"></line>
+        <line x1="6" y1="6" x2="18" y2="18"></line>
+      </svg>
+    </button>
+    
+    <div class="tour-content">
+      <div class="tour-step" id="tour-step-0">
+        <div class="tour-icon" style="background: var(--amber);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
+            <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
+            <rect x="3" y="7" width="12" height="10" rx="2"/>
+          </svg>
+        </div>
+        <h3>Welcome to MeetKit</h3>
+        <p>Join video meetings instantly. No downloads, no sign-ups required.</p>
+        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">Let's learn how to join a meeting →</p>
+      </div>
+
+      <div class="tour-step hidden" id="tour-step-1">
+        <div class="tour-icon" style="background: rgba(106,170,122,0.2); color: var(--green);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12a9 9 0 010-18 9 9 0 0110 16.5"/>
+            <path d="M9 12h6M9 16h4"/>
+          </svg>
+        </div>
+        <h3>Step 1: Room Name</h3>
+        <p>Enter the room name that the meeting organizer gave you. For example: "design-review" or "team-sync"</p>
+        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">Room names are shared and can't be private.</p>
+      </div>
+
+      <div class="tour-step hidden" id="tour-step-2">
+        <div class="tour-icon" style="background: rgba(184,160,136,0.2); color: var(--sand);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+          </svg>
+        </div>
+        <h3>Step 2: Your Display Name</h3>
+        <p>Enter your name so others can see who you are. This appears next to your video and in the participants list.</p>
+        <div style="background: rgba(201,147,90,0.1); border-left: 3px solid var(--amber); padding: 0.8rem; border-radius: 4px; margin-top: 0.8rem;">
+          <p style="font-size: 0.8rem; color: var(--amber); font-weight: 500; margin: 0;">⭐ Important for Room Creators:</p>
+          <p style="font-size: 0.8rem; color: var(--tx-2); margin: 0.4rem 0 0;">If you created this room, enter the exact SAME display name you used when creating it. This makes you the admin so you can remove unwanted participants.</p>
+        </div>
+      </div>
+
+      <div class="tour-step hidden" id="tour-step-3">
+        <div class="tour-icon" style="background: rgba(186,61,100,0.15); color: #ca3d64;">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="23 6 13.5 15.5 8 9.5 1 16"></polyline>
+            <polyline points="17 6 23 6 23 12"></polyline>
+          </svg>
+        </div>
+        <h3>Step 3: Join Room</h3>
+        <p>Click "Join Room" to connect. Our system will ask for camera and microphone permissions (optional, you can skip them).</p>
+        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">You can adjust audio/video settings once you're in the room.</p>
+      </div>
+
+      <div class="tour-step hidden" id="tour-step-4">
+        <div class="tour-icon" style="background: rgba(201,147,90,0.2); color: var(--amber);">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <h3>Admin Controls</h3>
+        <p>If you're the room creator and joined with your creation name, you'll see a "ADMIN" badge and "Remove" buttons next to other participants.</p>
+        <div style="background: rgba(201,147,90,0.1); border-left: 3px solid var(--amber); padding: 0.8rem; border-radius: 4px; margin-top: 0.8rem;">
+          <p style="font-size: 0.8rem; color: var(--amber); font-weight: 500; margin: 0;">🛡️ What You Can Do as Admin:</p>
+          <p style="font-size: 0.8rem; color: var(--tx-2); margin: 0.4rem 0 0;">• Remove unwanted participants by clicking "Remove" next to their name<br/>• Control who participates in your meeting<br/>• Ensure a secure and professional environment</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tour-nav">
+      <button class="tour-btn-prev" id="tour-prev" onclick="tourPrevStep()" disabled>← Previous</button>
+      <div class="tour-counter"><span id="tour-current">1</span> / <span id="tour-total">5</span></div>
+      <button class="tour-btn-next" id="tour-next" onclick="tourNextStep()">Next →</button>
+    </div>
+  </div>
+</div>
+
 <script>
 /* ════════════════════════════════════════════
    STATE
 ════════════════════════════════════════════ */
 let lkRoom = null, micEnabled = true, camEnabled = true;
 let isJoiningRoom = false; // Prevent double-join attempts
+let isRoomAdmin = false; // Track if current user is admin
+let adminIdentity = null; // Store admin identity for authorization
+let localUserIdentity = null; // Store our own identity
 const tiles = {}, participantNames = {};
 const textEncoder = new TextEncoder(), textDecoder = new TextDecoder();
 let localDisplayName = '', sidebarOpen = false, activeTab = 'chat';
@@ -742,9 +1060,80 @@ function switchMode(mode) {
   }
 }
 
+/* ════════════════════════════════════════════
+   PLATFORM TOUR - JOINING FUNCTIONALITY
+════════════════════════════════════════════ */
+let currentTourStep = 0;
+const totalTourSteps = 5;
+
+function startTour() {
+  currentTourStep = 0;
+  updateTourDisplay();
+  document.getElementById('tour-modal').classList.remove('hidden');
+  switchMode('join'); // Show join mode
+  logger.info("Platform tour started");
+}
+
+function endTour() {
+  document.getElementById('tour-modal').classList.add('hidden');
+  currentTourStep = 0;
+  logger.info("Platform tour ended");
+}
+
+function tourNextStep() {
+  if (currentTourStep < totalTourSteps - 1) {
+    currentTourStep++;
+    updateTourDisplay();
+  }
+}
+
+function tourPrevStep() {
+  if (currentTourStep > 0) {
+    currentTourStep--;
+    updateTourDisplay();
+  }
+}
+
+function updateTourDisplay() {
+  // Hide all steps
+  for (let i = 0; i < totalTourSteps; i++) {
+    const step = document.getElementById(`tour-step-${i}`);
+    if (step) step.classList.add('hidden');
+  }
+  
+  // Show current step
+  const currentStep = document.getElementById(`tour-step-${currentTourStep}`);
+  if (currentStep) currentStep.classList.remove('hidden');
+  
+  // Update counter
+  document.getElementById('tour-current').textContent = currentTourStep + 1;
+  
+  // Update button states
+  const prevBtn = document.getElementById('tour-prev');
+  const nextBtn = document.getElementById('tour-next');
+  
+  if (prevBtn) prevBtn.disabled = currentTourStep === 0;
+  if (nextBtn) nextBtn.disabled = currentTourStep === totalTourSteps - 1;
+  
+  // Update button text on last step
+  if (nextBtn) {
+    nextBtn.textContent = currentTourStep === totalTourSteps - 2 ? 'Finish →' : 'Next →';
+    if (currentTourStep === totalTourSteps - 1) {
+      nextBtn.onclick = endTour;
+      nextBtn.textContent = 'Close';
+      nextBtn.disabled = false;
+    } else {
+      nextBtn.onclick = tourNextStep;
+    }
+  }
+}
+
 async function createRoom() {
   hideCreateError();
+  const creatorName = document.getElementById('create-name-input').value.trim();
   const roomName = document.getElementById('create-room-input').value.trim();
+  
+  if (!creatorName) { showCreateError('Please enter your display name.'); return; }
   if (!roomName) { showCreateError('Please enter a room name.'); return; }
   
   setCreateLoading(true);
@@ -752,7 +1141,10 @@ async function createRoom() {
     const res = await fetch('/create-room', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ room_name: roomName })
+      body: JSON.stringify({ 
+        room_name: roomName,
+        creator_name: creatorName  // NEW: Send creator's name so they become admin on join
+      })
     });
     
     if (!res.ok) {
@@ -765,12 +1157,12 @@ async function createRoom() {
     
     // Display the created room info
     document.getElementById('created-room-name').textContent = data.room_name;
-    document.getElementById('created-room-id').textContent = data.room_id;
+    document.getElementById('created-room-code').textContent = data.meeting_code;
     document.getElementById('meeting-url-display').value = data.meeting_url;
     document.getElementById('room-created-info').style.display = 'block';
     
     showToast(`Room created! Share the link with others.`);
-    logger.info("Room created: %s (%s)", data.room_name, data.room_id);
+    logger.info("Room created: %s (%s) by %s", data.room_name, data.meeting_code, creatorName);
   } catch (err) {
     console.error(err);
     showCreateError(err.message || 'Could not create room. Check server logs.');
@@ -789,33 +1181,87 @@ function copyMeetingUrl() {
 async function joinCreatedRoom() {
   if (!window.createdRoomData) return;
   const roomName = window.createdRoomData.room_name;
+  const meeting_code = window.createdRoomData.meeting_code;
+  const room_id = window.createdRoomData.room_id;
   
-  // Switch to join mode and pre-fill
+  // Store meeting code data for use during join
+  window.meetingCodeData = {
+    meeting_code: meeting_code,
+    room_name: roomName,
+    room_id: room_id
+  };
+  
+  // Switch to join mode and pre-fill with creator's name
   switchMode('join');
   document.getElementById('room-input').value = roomName;
+  // Pre-fill with creator name so they join as creator and become admin
+  const createdRoomCreatorName = document.getElementById('create-name-input').value.trim();
+  if (createdRoomCreatorName) {
+    document.getElementById('name-input').value = createdRoomCreatorName;
+  }
   document.getElementById('name-input').focus();
-  showToast('Enter your name to join');
+  showToast('Press Enter or click Join to join your room');
 }
 
 /* ════════════════════════════════════════════
-   URL PARAMETER HANDLING
+   URL PARAMETER HANDLING & ROOM LOOKUP
 ════════════════════════════════════════════ */
-function getUrlParams() {
-  const params = new URLSearchParams(window.location.search);
-  return {
-    room: params.get('room'),
-    id: params.get('id')
-  };
+function getMeetingCode() {
+  // Check if url has meeting code: /join/abc-def-ghi
+  const pathParts = window.location.pathname.split('/');
+  if (pathParts[1] === 'join' && pathParts[2]) {
+    return pathParts[2];
+  }
+  return null;
 }
 
-function handleUrlParams() {
-  const params = getUrlParams();
-  if (params.room) {
-    // Auto-fill room name from URL
-    document.getElementById('room-input').value = params.room;
+async function lookupRoomByCode(meetingCode) {
+  try {
+    logger.info("Looking up room for code: %s", meetingCode);
+    const res = await fetch(`/lookup-room?meeting_code=${encodeURIComponent(meetingCode)}`);
+    
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({}));
+      throw new Error(e.detail || 'Meeting code not found');
+    }
+    
+    const roomData = await res.json();
+    logger.debug("Room lookup successful: %s", roomData.room_name);
+    return roomData;
+  } catch (err) {
+    logger.error("Room lookup failed: %s", err.message);
+    throw err;
+  }
+}
+
+async function handleMeetingCodeUrl() {
+  const meetingCode = getMeetingCode();
+  if (!meetingCode) return;
+  
+  try {
+    logger.info("Meeting code detected in URL: %s", meetingCode);
+    // Look up the room details
+    const roomData = await lookupRoomByCode(meetingCode);
+    
+    // Store for use during join
+    window.meetingCodeData = {
+      meeting_code: meetingCode,
+      room_name: roomData.room_name,
+      room_id: roomData.room_id
+    };
+    
+    // Update UI to show join screen
     switchMode('join');
+    document.getElementById('room-input').value = roomData.room_name;
     document.getElementById('name-input').focus();
-    showToast('Room name pre-filled from link');
+    
+    // Auto-join after brief delay to ensure DOM is ready
+    setTimeout(() => {
+      showToast('Ready to join meeting. Enter your name and click Join.');
+    }, 100);
+  } catch (err) {
+    showError(`Invalid meeting link: ${err.message}`);
+    logger.error("Failed to handle meeting code: %s", err.message);
   }
 }
 
@@ -860,27 +1306,91 @@ function updateParticipantCount() {
 function syncParticipantsList() {
   const list = document.getElementById('participants-list');
   list.innerHTML = '';
-  const renderRow = (sid, name, isLocal, isMuted) => {
+  const renderRow = (sid, name, isLocal, isMuted, participantIdentity) => {
     const row = document.createElement('div');
     row.className = 'participant-row'; row.id = `prow-${sid}`;
+    
+    // Check if this participant is admin
+    const isAdmin = participantIdentity === adminIdentity;
+    const adminBadge = isAdmin ? '<span style="color:var(--amber);font-size:.63rem;font-weight:600;margin-left:0.3rem;background:rgba(201,147,90,0.15);padding:0.2rem 0.4rem;border-radius:3px;">ADMIN</span>' : '';
+    
+    // Kick button (only show if user is admin and target is not self)
+    const kickBtn = (isRoomAdmin && !isLocal) ? 
+      `<button onclick="kickParticipant('${escapeHtml(participantIdentity)}', '${escapeHtml(name)}')" style="background:rgba(184,96,96,0.2);border:none;color:var(--red-lt);padding:0.25rem 0.5rem;border-radius:3px;font-size:0.65rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(184,96,96,0.35)'" onmouseout="this.style.background='rgba(184,96,96,0.2)'">Remove</button>`
+      : '';
+    
     row.innerHTML = `
       <div class="p-row-avatar">${getInitials(name)}</div>
       <div class="p-row-info">
-        <div class="p-row-name">${escapeHtml(name)}${isLocal ? ' <span style="color:var(--amber);font-size:.63rem">(you)</span>' : ''}</div>
+        <div class="p-row-name">${escapeHtml(name)}${isLocal ? ' <span style="color:var(--amber);font-size:.63rem">(you)</span>' : ''}${adminBadge}</div>
         <div class="p-row-status">${isLocal ? 'Host' : 'Participant'}</div>
       </div>
-      <div class="p-row-icons">
+      <div class="p-row-icons" style="display:flex;align-items:center;gap:0.4rem;">
         <svg width="13" height="13" class="${isMuted ? 'muted-red' : ''}"><use href="${isMuted ? '#ic-mic-off' : '#ic-mic-on'}"/></svg>
+        ${kickBtn}
       </div>`;
     list.appendChild(row);
   };
   if (lkRoom) {
-    renderRow(lkRoom.localParticipant.sid, localDisplayName, true, !micEnabled);
+    renderRow(lkRoom.localParticipant.sid, localDisplayName, true, !micEnabled, lkRoom.localParticipant.identity);
     for (const [, p] of lkRoom.remoteParticipants) {
       let isMuted = false;
       for (const [, pub] of p.trackPublications) { if (pub.kind === 'audio' && pub.isMuted) { isMuted = true; break; } }
-      renderRow(p.sid, p.name || p.identity, false, isMuted);
+      renderRow(p.sid, p.name || p.identity, false, isMuted, p.identity);
     }
+  }
+}
+
+/* ════════════════════════════════════════════
+   ADMIN - REMOVE PARTICIPANT
+════════════════════════════════════════════ */
+async function kickParticipant(participantIdentity, participantName) {
+  if (!isRoomAdmin || !adminIdentity) {
+    showToast('Only admin can remove participants', 'error');
+    return;
+  }
+  
+  try {
+    logger.info("Kicking participant: %s", participantName);
+    
+    // Notify the participant they're being kicked (before server removes them)
+    const notifyMessage = {
+      type: 'kick',
+      target: participantIdentity,
+      ts: new Date().toISOString()
+    };
+    try {
+      await publishReliableData(textEncoder.encode(JSON.stringify(notifyMessage)));
+    } catch (err) {
+      logger.warn("Could not send kick notification to participant: %s", err.message);
+    }
+    
+    // Call backend to remove participant
+    const res = await fetch('/remove-participant', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/json'},
+      body: JSON.stringify({
+        room_name: roomName,
+        admin_identity: adminIdentity,
+        participant_identity: participantIdentity
+      })
+    });
+    
+    if (!res.ok) {
+      const e = await res.json().catch(() => ({ detail: res.statusText }));
+      throw new Error(e.detail || 'Failed to remove participant');
+    }
+    
+    logger.info("Participant removed successfully");
+    showToast(`${participantName} has been removed from the meeting`);
+    
+    // Remove from UI immediately
+    const row = document.getElementById(`prow-${participantIdentity}`);
+    if (row) row.remove();
+    
+  } catch (err) {
+    logger.error("Failed to kick participant: %s", err.message);
+    showToast(`Error: ${err.message}`, 'error');
   }
 }
 
@@ -1032,12 +1542,19 @@ async function joinRoom() {
     
     // Get token
     logger.info("Requesting access token for room: %s", roomName);
-    const params = getUrlParams();
     const tokenRequest = {
       room_name: roomName,
       participant_name: userName,
-      room_id: params.id || null
+      room_id: null,
+      meeting_code: null
     };
+    
+    // If joining via meeting code link
+    if (window.meetingCodeData) {
+      tokenRequest.meeting_code = window.meetingCodeData.meeting_code;
+      tokenRequest.room_id = window.meetingCodeData.room_id;
+      logger.info("Joining via meeting code: %s", window.meetingCodeData.meeting_code);
+    }
     
     const res = await fetch('/token', {
       method: 'POST',
@@ -1049,8 +1566,10 @@ async function joinRoom() {
       const e = await res.json().catch(() => ({})); 
       throw new Error(e.detail || 'Failed to get access token'); 
     }
-    const { token, livekit_url } = await res.json();
-    logger.info("Token received, connecting to LiveKit...");
+    const { token, livekit_url, is_admin, admin_identity } = await res.json();
+    isRoomAdmin = is_admin || false;
+    adminIdentity = admin_identity;
+    logger.info("Token received. Admin: %s", isRoomAdmin ? "YES" : "NO");
 
     // Create room with timeout protection
     lkRoom = new LivekitClient.Room({ 
@@ -1108,6 +1627,10 @@ async function joinRoom() {
     document.getElementById('room').style.display = 'flex';
     document.getElementById('room-title').textContent = roomName;
     document.getElementById('ctrl-room-name').textContent = roomName;
+
+    // Store local user identity for admin controls
+    localUserIdentity = lkRoom.localParticipant.identity;
+    logger.debug("Local identity stored: %s", localUserIdentity);
 
     createTile(lkRoom.localParticipant.sid, userName, true);
     const localVid = lkRoom.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera)?.videoTrack;
@@ -1202,7 +1725,21 @@ function appendChatMessage({ sender, text, isSelf = false, timestamp = new Date(
 function onDataReceived(payload, participant) {
   try {
     const parsed = JSON.parse(textDecoder.decode(payload));
-    if (!parsed || parsed.type !== 'chat' || !parsed.text) return;
+    if (!parsed) return;
+    
+    // Handle kick notification
+    if (parsed.type === 'kick' && parsed.target === lkRoom.localParticipant.identity) {
+      logger.warn("User was kicked from the room");
+      showToast('You were removed from the meeting by the admin', 'warning');
+      setTimeout(async () => {
+        await lkRoom.disconnect();
+        resetToLobby();
+      }, 500);
+      return;
+    }
+    
+    // Handle chat messages
+    if (parsed.type !== 'chat' || !parsed.text) return;
     appendChatMessage({ sender: parsed.sender || participant?.name || participant?.identity || 'Participant', text: String(parsed.text), isSelf: false, timestamp: parsed.ts || new Date() });
   } catch (_) {}
 }
@@ -1323,18 +1860,18 @@ document.addEventListener('click', (e) => {
 /* ════════════════════════════════════════════
    INITIALIZATION
 ════════════════════════════════════════════ */
-// Handle URL parameters on page load
+// Handle meeting code from URL on page load
 document.addEventListener('DOMContentLoaded', () => {
-  handleUrlParams();
+  handleMeetingCodeUrl();
 });
 
 // If DOM is already loaded (cached page)
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    handleUrlParams();
+    handleMeetingCodeUrl();
   });
 } else {
-  handleUrlParams();
+  handleMeetingCodeUrl();
 }
 </script>
 </body>
