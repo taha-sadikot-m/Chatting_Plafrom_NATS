@@ -3,1876 +3,1772 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-<title>MeetKit — Live Video Rooms</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300&family=DM+Serif+Display:ital@0;1&display=swap" rel="stylesheet">
+<title>MeetKit</title>
+<meta name="description" content="Secure group video calls powered by LiveKit." />
 <script src="/static/livekit-client.umd.min.js"></script>
+<script>
+  if (typeof LivekitClient === 'undefined') {
+    document.write('<script src="https://cdn.jsdelivr.net/npm/livekit-client/dist/livekit-client.umd.min.js"><\/script>');
+  }
+</script>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
 <style>
-/* ══════════════════════════════════════════════════
-   DESIGN TOKENS — Mat dark warm amber
-══════════════════════════════════════════════════ */
+/* ── TOKENS ──────────────────────────────────── */
 :root {
-  --bg:          #16151a;
-  --bg-2:        #1c1b21;
-  --bg-3:        #222129;
-  --bg-4:        #282730;
-  --bg-5:        #2e2d38;
-  --bdr:         rgba(255,250,240,0.07);
-  --bdr-soft:    rgba(255,250,240,0.04);
-  --bdr-med:     rgba(255,250,240,0.11);
-  --amber:       #c9935a;
-  --amber-lt:    #daa96e;
-  --amber-dk:    #a87548;
-  --amber-dim:   rgba(201,147,90,0.14);
-  --amber-glow:  rgba(201,147,90,0.07);
-  --green:       #6aaa7a;
-  --green-dim:   rgba(106,170,122,0.12);
-  --red:         #b86060;
-  --red-dim:     rgba(184,96,96,0.14);
-  --red-lt:      #cc7070;
-  --tx-1:        #f2ede8;
-  --tx-2:        #b8b2aa;
-  --tx-3:        #7a7470;
-  --tx-4:        #504c49;
-  --ff-ui:       'DM Sans', 'Helvetica Neue', sans-serif;
-  --ff-display:  'DM Serif Display', Georgia, serif;
-  --r-sm:   8px;
-  --r-md:   12px;
-  --r-lg:   18px;
-  --r-xl:   24px;
-  --r-full: 9999px;
-  --header-h:    58px;
-  --controls-h:  80px;
-  --chat-w:      320px;
+  --bg:          #0d0f17;
+  --surface:     #141720;
+  --surface2:    #1b1e2e;
+  --surface3:    #22263a;
+  --surface4:    #2a2f47;
+  --border:      rgba(130,142,200,0.09);
+  --border2:     rgba(130,142,200,0.16);
+  --text:        #dde1f0;
+  --text2:       #8892b2;
+  --text3:       #5b6485;
+  --accent:      #5b73f5;
+  --accent-h:    #7085f7;
+  --success:     #36c47a;
+  --danger:      #e85656;
+  --danger-h:    #d14040;
+  --warn:        #e8a538;
+  --tile-radius: 10px;
+  --ctrl-h:      72px;
+  --font:        'Inter', system-ui, -apple-system, sans-serif;
 }
 
+/* ── RESET ───────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-html { height: 100%; }
+html, body { height: 100%; overflow: hidden; }
 body {
-  font-family: var(--ff-ui);
-  background: var(--bg);
-  color: var(--tx-1);
-  min-height: 100%;
-  overflow: hidden;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font); font-size: 14px;
   -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  user-select: none;
+}
+button { font-family: var(--font); cursor: pointer; border: none; outline: none; }
+input  { font-family: var(--font); outline: none; border: none; }
+button:focus-visible, input:focus-visible, textarea:focus-visible, select:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
 }
 
-/* ══════════════════════════════════════════════════
-   LOBBY
-══════════════════════════════════════════════════ */
+/* ── SVG ICON DEFAULTS ───────────────────────── */
+.icon-svg { display: inline-flex; align-items: center; justify-content: center; flex-shrink: 0; line-height: 0; }
+.icon-svg svg {
+  width: 20px; height: 20px;
+  fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.icon-sm svg { width: 16px; height: 16px; }
+.icon-xs svg { width: 14px; height: 14px; }
+.icon-lg svg { width: 28px; height: 28px; stroke-width: 1.5; }
+.icon-xl svg { width: 40px; height: 40px; stroke-width: 1.2; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ── PRE-JOIN ────────────────────────────────── */
 #lobby {
   position: fixed; inset: 0; z-index: 100;
   display: flex; align-items: center; justify-content: center;
+  background: var(--bg);
   padding: 1.5rem;
-  background:
-    radial-gradient(ellipse 90% 70% at 15% 0%, rgba(201,147,90,0.06) 0%, transparent 55%),
-    radial-gradient(ellipse 60% 50% at 85% 100%, rgba(201,100,90,0.04) 0%, transparent 55%),
-    var(--bg);
-  overflow-y: auto;
+  padding: 1.5rem env(safe-area-inset-right, 0) 1.5rem env(safe-area-inset-left, 0);
+  animation: fadeUp .35s ease both;
 }
-
-.lobby-wrap {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  width: 100%; max-width: 880px;
-  min-height: 520px;
-  background: var(--bg-2);
-  border: 1px solid var(--bdr);
-  border-radius: var(--r-xl);
-  overflow: hidden;
-  box-shadow: 0 40px 100px rgba(0,0,0,0.55), 0 0 0 1px var(--bdr);
-  animation: lobbyIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
+.pj-wrap {
+  display: flex; gap: 2.5rem; align-items: stretch;
+  width: 100%; max-width: 900px;
 }
-
-.lobby-brand {
-  background:
-    radial-gradient(ellipse 80% 60% at 30% 20%, rgba(201,147,90,0.1) 0%, transparent 60%),
-    var(--bg-3);
-  border-right: 1px solid var(--bdr);
-  padding: 3rem 2.5rem;
-  display: flex; flex-direction: column; justify-content: space-between;
+.pj-preview {
+  flex: 1; min-width: 0; background: #090b11;
+  border-radius: 16px; overflow: hidden;
+  position: relative; aspect-ratio: 16/9;
 }
+.pj-preview video {
+  width: 100%; height: 100%;
+  object-fit: cover; transform: scaleX(-1);
+}
+.pj-cam-off {
+  position: absolute; inset: 0;
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .75rem; color: var(--text2); font-size: .82rem;
+}
+.pj-cam-off .icon-svg { opacity: .35; }
 
-.brand-logo { display: flex; align-items: center; gap: 0.7rem; }
+.pj-preview-controls {
+  position: absolute; bottom: 1rem; left: 50%;
+  transform: translateX(-50%);
+  display: flex; gap: .6rem;
+}
+.pj-pill-btn {
+  height: 38px; padding: 0 .85rem;
+  border-radius: 999px;
+  background: rgba(13,15,23,.7);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid rgba(130,142,200,.16);
+  color: var(--text); font-size: .78rem; font-weight: 500;
+  display: flex; align-items: center; gap: .4rem;
+  transition: background .15s;
+}
+.pj-pill-btn:hover { background: rgba(130,142,200,.12); }
+.pj-pill-btn.off { background: rgba(239,68,68,.2); border-color: rgba(239,68,68,.3); color: var(--danger); }
+.pj-pill-btn .icon-svg svg { width: 16px; height: 16px; }
 
-.brand-logo-mark {
-  width: 38px; height: 38px;
-  background: linear-gradient(140deg, var(--amber) 0%, var(--amber-dk) 100%);
-  border-radius: var(--r-md);
+.pj-form {
+  width: 320px; flex-shrink: 0;
+  display: flex; flex-direction: column;
+  justify-content: center; gap: 1.4rem;
+}
+.pj-logo { display: flex; align-items: center; gap: .65rem; }
+.pj-logo-mark {
+  width: 36px; height: 36px; border-radius: 9px;
+  background: #5b73f5;
   display: flex; align-items: center; justify-content: center;
-  box-shadow: 0 4px 14px rgba(201,147,90,0.22);
-  flex-shrink: 0;
+  color: #fff;
 }
+.pj-logo-mark svg { width: 18px; height: 18px; fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.pj-logo h1 { font-size: 1.35rem; font-weight: 700; letter-spacing: -.4px; color: var(--text); }
 
-.brand-logo-text {
-  font-family: var(--ff-display);
-  font-size: 1.35rem; color: var(--tx-1); letter-spacing: -0.02em;
+.pj-section { display: flex; flex-direction: column; gap: .8rem; }
+.pj-section-title { font-size: .7rem; font-weight: 600; letter-spacing: .7px; text-transform: uppercase; color: var(--text3); }
+.pj-field { display: flex; flex-direction: column; gap: .35rem; }
+.pj-field label { font-size: .78rem; font-weight: 500; color: var(--text2); }
+.pj-input {
+  width: 100%; background: var(--surface2);
+  border: 1.5px solid var(--border); border-radius: 9px;
+  padding: .7rem .9rem; color: var(--text); font-size: .88rem;
+  transition: border-color .18s, box-shadow .18s;
 }
-.brand-logo-text em { color: var(--amber); font-style: normal; }
+.pj-input:hover  { border-color: var(--border2); }
+.pj-input:focus  { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(91,115,245,.18); }
+.pj-input::placeholder { color: var(--text3); }
 
-.brand-hero { flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 2rem 0; }
-.brand-hero h2 { font-family: var(--ff-display); font-size: 1.9rem; font-weight: 400; line-height: 1.25; color: var(--tx-1); margin-bottom: 1rem; }
-.brand-hero h2 em { color: var(--amber); font-style: italic; }
-.brand-hero p { font-size: 0.86rem; color: var(--tx-3); line-height: 1.75; font-weight: 300; }
-
-.brand-features { display: flex; flex-direction: column; gap: 0.5rem; }
-.brand-feat { display: flex; align-items: center; gap: 0.55rem; font-size: 0.77rem; color: var(--tx-3); }
-.brand-feat .feat-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--green); flex-shrink: 0; }
-
-.lobby-form-panel { padding: 3rem 2.5rem; display: flex; flex-direction: column; justify-content: center; }
-.lobby-form-panel h3 { font-size: 1rem; font-weight: 500; color: var(--tx-1); margin-bottom: 0.35rem; }
-.lobby-form-panel .form-sub { font-size: 0.8rem; color: var(--tx-3); margin-bottom: 1.8rem; font-weight: 300; }
-
-.lobby-mode-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; background: var(--bg-3); border-radius: var(--r-md); padding: 0.3rem; }
-.mode-tab { flex: 1; padding: 0.5rem 1rem; background: transparent; border: none; border-radius: calc(var(--r-md) - 2px); color: var(--tx-3); font-family: var(--ff-ui); font-size: 0.75rem; font-weight: 500; letter-spacing: 0.05em; cursor: pointer; transition: all 0.2s; }
-.mode-tab:hover { color: var(--tx-2); }
-.mode-tab.active { background: var(--amber-dim); color: var(--amber); }
-
-.lobby-mode-content { display: none; }
-.lobby-mode-content.active { display: block; }
-
-.field { margin-bottom: 1rem; }
-.field label { display: block; font-size: 0.7rem; font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; color: var(--tx-3); margin-bottom: 0.45rem; }
-.field-input-wrap { position: relative; }
-.field-input-wrap .field-icon { position: absolute; left: 0.85rem; top: 50%; transform: translateY(-50%); color: var(--tx-4); pointer-events: none; display: flex; }
-.field input {
-  width: 100%; background: var(--bg-3); border: 1px solid var(--bdr); border-radius: var(--r-md);
-  padding: 0.82rem 0.95rem 0.82rem 2.6rem; color: var(--tx-1); font-family: var(--ff-ui);
-  font-size: 0.9rem; font-weight: 400; outline: none; caret-color: var(--amber);
-  transition: border-color 0.18s, background 0.18s, box-shadow 0.18s;
+.pj-device-select { position: relative; }
+.pj-device-select select {
+  width: 100%; background: var(--surface2);
+  border: 1.5px solid var(--border); border-radius: 9px;
+  padding: .62rem .9rem; padding-right: 2.2rem;
+  color: var(--text2); font-family: var(--font); font-size: .82rem;
+  cursor: pointer;
+  -webkit-appearance: none; -moz-appearance: none; appearance: none;
+  transition: border-color .18s;
 }
-.field input:hover { background: var(--bg-4); border-color: var(--bdr-med); }
-.field input:focus { background: var(--bg-4); border-color: rgba(201,147,90,0.45); box-shadow: 0 0 0 3px rgba(201,147,90,0.09); }
-.field input::placeholder { color: var(--tx-4); }
+.pj-device-select select:hover  { border-color: var(--border2); }
+.pj-device-select select:focus  { border-color: var(--accent); outline: none; }
+.pj-device-select select option { background: var(--surface2); color: var(--text); }
+.pj-device-select::after {
+  content: '▾'; position: absolute; right: .8rem; top: 50%;
+  transform: translateY(-50%);
+  color: var(--text3); pointer-events: none; font-size: .75rem;
+}
 
 .btn-join {
-  width: 100%; margin-top: 0.5rem;
-  padding: 0.88rem 1.5rem;
-  background: linear-gradient(145deg, var(--amber) 0%, var(--amber-dk) 100%);
-  border: none; border-radius: var(--r-md);
-  color: #1a1510; font-family: var(--ff-ui); font-size: 0.88rem; font-weight: 600;
-  letter-spacing: 0.02em; cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.16,1,0.3,1);
-  display: flex; align-items: center; justify-content: center; gap: 0.5rem;
-  box-shadow: 0 2px 12px rgba(201,147,90,0.22); position: relative; overflow: hidden;
+  width: 100%; padding: .82rem; border-radius: 10px;
+  background: var(--accent); color: #fff;
+  font-size: .9rem; font-weight: 600; letter-spacing: .1px;
+  transition: background .15s, transform .12s, box-shadow .15s;
+  box-shadow: 0 2px 12px rgba(91,115,245,.32);
+  position: relative; overflow: hidden;
 }
-.btn-join::before { content: ''; position: absolute; inset: 0; background: linear-gradient(180deg, rgba(255,255,255,0.09) 0%, transparent 100%); pointer-events: none; }
-.btn-join:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 20px rgba(201,147,90,0.32); }
-.btn-join:active:not(:disabled) { transform: translateY(0); }
-.btn-join:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
-.btn-join .spinner { display: none; width: 16px; height: 16px; border: 2px solid rgba(26,21,16,0.25); border-top-color: #1a1510; border-radius: 50%; animation: spin 0.65s linear infinite; }
-.btn-join.loading .btn-text, .btn-join.loading .btn-icon { display: none; }
-.btn-join.loading .spinner { display: block; }
+.btn-join:hover  { background: var(--accent-h); transform: translateY(-1px); box-shadow: 0 4px 18px rgba(91,115,245,.38); }
+.btn-join:active { transform: translateY(0); }
+.btn-join:disabled { opacity: .45; cursor: not-allowed; transform: none; box-shadow: none; }
+.btn-join .spinner {
+  display: none; width: 16px; height: 16px;
+  border: 2px solid rgba(255,255,255,.3); border-top-color: #fff;
+  border-radius: 50%; animation: spin .6s linear infinite; margin: 0 auto;
+}
+.btn-join.loading .btn-text { display: none; }
+.btn-join.loading .spinner  { display: block; }
 
-#error-msg { margin-top: 0.9rem; padding: 0.7rem 0.9rem; background: var(--red-dim); border: 1px solid rgba(184,96,96,0.22); border-radius: var(--r-sm); color: var(--red-lt); font-size: 0.8rem; line-height: 1.5; display: none; }
+#error-msg {
+  padding: .6rem .8rem;
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.22);
+  border-radius: 8px; color: #fca5a5; font-size: .78rem; line-height: 1.5;
+  display: none;
+}
+.pj-divider { height: 1px; background: var(--border); margin: .2rem 0; }
 
-.lobby-divider { display: flex; align-items: center; gap: 0.8rem; margin: 1.4rem 0 1.1rem; }
-.lobby-divider span { font-size: 0.7rem; color: var(--tx-4); white-space: nowrap; letter-spacing: 0.05em; }
-.lobby-divider::before, .lobby-divider::after { content: ''; flex: 1; height: 1px; background: var(--bdr); }
+/* ── MEETING ROOM ────────────────────────────── */
+#room {
+  display: none; position: fixed; inset: 0; z-index: 50;
+  flex-direction: column; background: var(--bg);
+}
 
-.lobby-hint { font-size: 0.75rem; color: var(--tx-4); text-align: center; line-height: 1.6; }
-
-/* ══════════════════════════════════════════════════
-   ROOM LAYOUT
-══════════════════════════════════════════════════ */
-#room { display: none; flex-direction: column; height: 100dvh; height: 100vh; overflow: hidden; background: var(--bg); }
-
-/* Header */
+/* ── Top Bar ─────────────────────────────────── */
 .room-header {
-  height: var(--header-h); flex-shrink: 0;
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 52px; z-index: 30;
   display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.25rem;
-  background: var(--bg-2); border-bottom: 1px solid var(--bdr);
-  z-index: 20;
+  padding: 0 1rem;
+  background: linear-gradient(180deg, rgba(8,10,18,.72) 0%, transparent 100%);
+  pointer-events: none;
 }
+.room-header > * { pointer-events: auto; }
+.room-info { display: flex; align-items: center; gap: .55rem; flex-wrap: nowrap; min-width: 0; }
+.room-dot {
+  width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0;
+  background: var(--success); box-shadow: 0 0 6px var(--success);
+  animation: pulse 2s ease-in-out infinite;
+}
+.room-name {
+  font-weight: 600; font-size: .84rem; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 160px;
+}
+.meeting-code-display {
+  font-size: .72rem; font-weight: 500; color: var(--accent);
+  background: rgba(91,115,245,.1); border: 1px solid rgba(91,115,245,.2);
+  border-radius: 20px; padding: .15rem .55rem; cursor: pointer;
+  transition: background .15s; white-space: nowrap;
+}
+.meeting-code-display:hover { background: rgba(91,115,245,.2); }
+.participant-count {
+  font-size: .72rem; font-weight: 500; color: rgba(221,225,240,.45);
+  background: rgba(130,142,200,.08); border: 1px solid rgba(130,142,200,.12);
+  border-radius: 20px; padding: .15rem .55rem; white-space: nowrap;
+}
+.meeting-timer { font-size: .72rem; font-weight: 500; color: var(--text3); white-space: nowrap; }
 
-.rh-left { display: flex; align-items: center; gap: 0.9rem; min-width: 0; flex: 1; }
+.header-actions { display: flex; align-items: center; gap: .5rem; flex-shrink: 0; }
+.btn-leave {
+  height: 32px; padding: 0 .9rem; border-radius: 7px;
+  background: rgba(239,68,68,.18); border: 1px solid rgba(239,68,68,.28);
+  color: var(--danger); font-size: .78rem; font-weight: 600;
+  transition: background .15s;
+}
+.btn-leave:hover { background: rgba(239,68,68,.28); }
 
-.rh-logo { display: flex; align-items: center; gap: 0.55rem; font-family: var(--ff-display); font-size: 1.1rem; color: var(--tx-2); text-decoration: none; flex-shrink: 0; }
-.rh-logo em { color: var(--amber); font-style: normal; }
-.rh-sep { width: 1px; height: 18px; background: var(--bdr-med); flex-shrink: 0; }
+.net-quality { display: flex; align-items: flex-end; gap: 2px; padding: .15rem .3rem; }
+.net-quality .bar {
+  width: 3px; border-radius: 1px; background: var(--text3); transition: background .3s;
+}
+.net-quality .bar:nth-child(1) { height: 5px; }
+.net-quality .bar:nth-child(2) { height: 8px; }
+.net-quality .bar:nth-child(3) { height: 11px; }
+.net-quality.good .bar { background: var(--success); }
+.net-quality.fair .bar:nth-child(3) { background: var(--text3); }
+.net-quality.fair .bar:not(:nth-child(3)) { background: var(--warn); }
+.net-quality.poor .bar:first-child { background: var(--danger); }
+.net-quality.poor .bar:not(:first-child) { background: var(--text3); }
 
-.room-badge { display: flex; align-items: center; gap: 0.5rem; min-width: 0; }
-.room-live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--green); box-shadow: 0 0 6px rgba(106,170,122,0.6); animation: livePulse 2.5s ease-in-out infinite; flex-shrink: 0; }
-.room-name-text { font-size: 0.85rem; font-weight: 500; color: var(--tx-1); max-width: 200px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.p-count-badge { display: flex; align-items: center; gap: 0.4rem; background: var(--bg-3); border: 1px solid var(--bdr); border-radius: var(--r-full); padding: 0.22rem 0.6rem 0.22rem 0.5rem; font-size: 0.72rem; color: var(--tx-3); font-weight: 400; flex-shrink: 0; }
-.rh-right { display: flex; align-items: center; gap: 0.5rem; flex-shrink: 0; }
-.room-time { font-size: 0.78rem; color: var(--tx-3); font-weight: 300; min-width: 46px; text-align: right; font-variant-numeric: tabular-nums; }
-.hdr-btn { width: 34px; height: 34px; border-radius: var(--r-md); border: 1px solid var(--bdr); background: transparent; color: var(--tx-3); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.16s; }
-.hdr-btn:hover { background: var(--bg-4); color: var(--tx-1); border-color: var(--bdr-med); }
-
-/* Body */
-.room-body { flex: 1; display: flex; overflow: hidden; min-height: 0; }
-
-/* Video stage */
-.video-stage { flex: 1; min-width: 0; display: flex; flex-direction: column; background: var(--bg); overflow: hidden; }
-
-/* Video grid */
-.video-grid { flex: 1; padding: 10px; display: grid; grid-template-columns: repeat(2,1fr); gap: 8px; align-content: center; overflow: hidden; min-height: 0; }
-.video-grid.grid-1 { grid-template-columns: 1fr; max-width: 960px; margin: 0 auto; width: 100%; }
-.video-grid.grid-2 { grid-template-columns: repeat(2,1fr); }
-.video-grid.grid-3, .video-grid.grid-4 { grid-template-columns: repeat(2,1fr); }
-.video-grid.grid-5, .video-grid.grid-6 { grid-template-columns: repeat(3,1fr); }
-.video-grid.grid-7, .video-grid.grid-8, .video-grid.grid-9 { grid-template-columns: repeat(3,1fr); }
-
-/* Tile */
-.participant-tile {
-  position: relative; background: var(--bg-3);
-  border: 1.5px solid var(--bdr); border-radius: var(--r-lg);
-  overflow: hidden; aspect-ratio: 16/9;
+/* ── Video Stage ─────────────────────────────── */
+.room-main { flex: 1; display: flex; min-height: 0; position: relative; }
+.video-stage {
+  position: absolute; inset: 0;
+  padding: 8px 8px calc(var(--ctrl-h) + 16px) 8px;
   display: flex; align-items: center; justify-content: center;
-  transition: border-color 0.25s, box-shadow 0.25s;
-  will-change: transform;
-}
-.participant-tile::after { content: ''; position: absolute; inset: 0; background: linear-gradient(to top, rgba(16,15,20,0.75) 0%, transparent 38%); pointer-events: none; z-index: 2; }
-.participant-tile.speaking { border-color: var(--amber); box-shadow: 0 0 0 2px rgba(201,147,90,0.2); }
-.participant-tile video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; border-radius: calc(var(--r-lg) - 1px); }
-
-.video-off-placeholder { position: relative; z-index: 1; display: flex; flex-direction: column; align-items: center; gap: 0.75rem; }
-.avatar { width: 68px; height: 68px; border-radius: 50%; background: linear-gradient(145deg, var(--bg-5), var(--bg-4)); border: 1.5px solid rgba(201,147,90,0.2); display: flex; align-items: center; justify-content: center; font-family: var(--ff-display); font-size: 1.5rem; font-weight: 400; color: var(--amber-lt); }
-.video-off-placeholder .p-name-ph { font-size: 0.78rem; color: var(--tx-3); font-weight: 300; }
-
-.tile-footer { position: absolute; bottom: 0; left: 0; right: 0; padding: 0.55rem 0.7rem; display: flex; align-items: center; justify-content: space-between; z-index: 3; }
-.tile-name { display: flex; align-items: center; gap: 0.4rem; background: rgba(16,15,20,0.72); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.05); border-radius: var(--r-sm); padding: 0.22rem 0.6rem; font-size: 0.74rem; font-weight: 500; color: var(--tx-2); max-width: calc(100% - 2rem); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
-.muted-icon { flex-shrink: 0; color: var(--red); display: none; }
-.local-badge { position: absolute; top: 0.6rem; right: 0.6rem; z-index: 3; background: rgba(201,147,90,0.12); border: 1px solid rgba(201,147,90,0.28); color: var(--amber); border-radius: var(--r-sm); padding: 0.15rem 0.5rem; font-size: 0.64rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; }
-
-.waiting-overlay { position: absolute; inset: 0; z-index: 4; background: rgba(16,15,20,0.72); backdrop-filter: blur(3px); -webkit-backdrop-filter: blur(3px); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.9rem; border-radius: calc(var(--r-lg) - 1px); }
-.waiting-overlay .pulse-ring { width: 44px; height: 44px; border: 1.5px solid rgba(201,147,90,0.55); border-radius: 50%; animation: pulseRing 1.8s ease-out infinite; }
-.waiting-overlay p { font-size: 0.77rem; color: var(--tx-3); font-weight: 300; }
-
-/* Sidebar */
-.room-sidebar {
-  width: var(--chat-w); flex-shrink: 0;
-  display: flex; flex-direction: column;
-  background: var(--bg-2); border-left: 1px solid var(--bdr);
   overflow: hidden;
-  transition: width 0.3s cubic-bezier(0.16,1,0.3,1), opacity 0.3s, transform 0.3s cubic-bezier(0.16,1,0.3,1);
 }
-.room-sidebar.hidden { width: 0; opacity: 0; pointer-events: none; transform: translateX(16px); }
-
-.sidebar-tabs { display: flex; border-bottom: 1px solid var(--bdr); flex-shrink: 0; }
-.sidebar-tab { flex: 1; padding: 0.7rem 0.5rem; background: transparent; border: none; border-bottom: 2px solid transparent; color: var(--tx-3); font-family: var(--ff-ui); font-size: 0.78rem; font-weight: 500; cursor: pointer; transition: all 0.18s; display: flex; align-items: center; justify-content: center; gap: 0.4rem; letter-spacing: 0.01em; }
-.sidebar-tab:hover { color: var(--tx-1); background: rgba(255,255,255,0.02); }
-.sidebar-tab.active { color: var(--amber); border-bottom-color: var(--amber); }
-
-.sidebar-panel { display: none; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
-.sidebar-panel.active { display: flex; }
-
-/* Participants list */
-.participants-list { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.35rem; scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; }
-.participants-list::-webkit-scrollbar { width: 4px; }
-.participants-list::-webkit-scrollbar-thumb { background: var(--bg-5); border-radius: 4px; }
-
-.participant-row { display: flex; align-items: center; gap: 0.65rem; padding: 0.55rem 0.65rem; border-radius: var(--r-md); background: var(--bg-3); border: 1px solid var(--bdr-soft); transition: background 0.15s; }
-.participant-row:hover { background: var(--bg-4); }
-.p-row-avatar { width: 32px; height: 32px; border-radius: 50%; background: linear-gradient(145deg, var(--bg-5), var(--bg-4)); border: 1px solid rgba(201,147,90,0.18); display: flex; align-items: center; justify-content: center; font-family: var(--ff-display); font-size: 0.85rem; color: var(--amber-lt); flex-shrink: 0; }
-.p-row-info { flex: 1; min-width: 0; }
-.p-row-name { font-size: 0.8rem; font-weight: 500; color: var(--tx-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.p-row-status { font-size: 0.68rem; color: var(--tx-3); font-weight: 300; }
-.p-row-icons { display: flex; gap: 0.3rem; color: var(--tx-4); }
-.p-row-icons .muted-red { color: var(--red); }
-
-/* Chat messages */
-.chat-messages { flex: 1; overflow-y: auto; padding: 0.75rem; display: flex; flex-direction: column; gap: 0.55rem; scrollbar-width: thin; scrollbar-color: var(--bg-5) transparent; }
-.chat-messages::-webkit-scrollbar { width: 4px; }
-.chat-messages::-webkit-scrollbar-thumb { background: var(--bg-5); border-radius: 4px; }
-.chat-empty { margin: auto; text-align: center; color: var(--tx-4); font-size: 0.8rem; line-height: 1.7; font-weight: 300; padding: 2rem; }
-
-.chat-msg { display: flex; flex-direction: column; gap: 0.2rem; animation: msgIn 0.2s cubic-bezier(0.16,1,0.3,1) both; }
-.chat-msg-bubble { padding: 0.55rem 0.75rem; background: var(--bg-3); border: 1px solid var(--bdr-soft); border-radius: 0 var(--r-md) var(--r-md) var(--r-md); }
-.chat-msg.self .chat-msg-bubble { background: var(--amber-dim); border-color: rgba(201,147,90,0.18); border-radius: var(--r-md) 0 var(--r-md) var(--r-md); }
-.chat-meta { display: flex; align-items: center; gap: 0.4rem; font-size: 0.67rem; color: var(--tx-4); }
-.chat-meta .sender { color: var(--tx-3); font-weight: 500; }
-.chat-msg.self .chat-meta { justify-content: flex-end; }
-.chat-msg.self { align-items: flex-end; }
-.chat-text { font-size: 0.83rem; line-height: 1.5; color: var(--tx-2); white-space: pre-wrap; word-break: break-word; }
-
-.chat-input-area { padding: 0.65rem; border-top: 1px solid var(--bdr); flex-shrink: 0; }
-.chat-input-row { display: flex; gap: 0.4rem; align-items: flex-end; }
-.chat-input { flex: 1; background: var(--bg-3); border: 1px solid var(--bdr); border-radius: var(--r-md); padding: 0.6rem 0.8rem; color: var(--tx-1); font-family: var(--ff-ui); font-size: 0.82rem; font-weight: 300; outline: none; resize: none; caret-color: var(--amber); min-height: 38px; max-height: 100px; line-height: 1.5; transition: border-color 0.18s, background 0.18s; scrollbar-width: none; }
-.chat-input:focus { border-color: rgba(201,147,90,0.4); background: var(--bg-4); box-shadow: 0 0 0 3px rgba(201,147,90,0.07); }
-.chat-input::placeholder { color: var(--tx-4); }
-.chat-send-btn { width: 36px; height: 36px; flex-shrink: 0; border-radius: var(--r-md); border: 1px solid rgba(201,147,90,0.25); background: var(--amber-dim); color: var(--amber); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.18s; }
-.chat-send-btn:hover:not(:disabled) { background: rgba(201,147,90,0.22); border-color: rgba(201,147,90,0.4); }
-.chat-send-btn:disabled { opacity: 0.35; cursor: not-allowed; }
-
-/* Controls bar */
-.room-controls {
-  height: var(--controls-h); flex-shrink: 0;
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 0 1.5rem;
-  background: var(--bg-2); border-top: 1px solid var(--bdr);
-  z-index: 20;
+.video-grid {
+  width: 100%; height: 100%;
+  display: flex; flex-wrap: wrap;
+  gap: 6px;
+  justify-content: center; align-content: center; align-items: center;
 }
-.ctrl-left { display: flex; align-items: center; gap: 0.75rem; min-width: 0; flex: 1; }
-.ctrl-room-info { display: flex; flex-direction: column; gap: 0.15rem; min-width: 0; }
-.ctrl-room-name { font-size: 0.82rem; font-weight: 500; color: var(--tx-1); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 150px; }
-.ctrl-room-sub { font-size: 0.7rem; color: var(--tx-4); font-weight: 300; font-variant-numeric: tabular-nums; }
 
-.ctrl-center { display: flex; align-items: center; gap: 0.6rem; flex-shrink: 0; }
-.ctrl-right { display: flex; align-items: center; gap: 0.5rem; flex: 1; justify-content: flex-end; }
+.empty-room-msg {
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .75rem; color: var(--text3); font-size: .85rem; text-align: center;
+  position: absolute; inset: 0;
+}
+.empty-room-msg .icon-svg { opacity: .4; }
 
-.ctrl-btn-wrap { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-
-.ctrl-btn {
-  width: 52px; height: 52px; border-radius: 50%;
-  border: 1px solid var(--bdr); background: var(--bg-3);
-  color: var(--tx-2); cursor: pointer;
+/* ── Participant Tile ────────────────────────── */
+.participant-tile {
+  aspect-ratio: 16/9;
+  min-height: 0; min-width: 0;
+  background: var(--surface); border-radius: var(--tile-radius);
+  position: relative; overflow: hidden;
   display: flex; align-items: center; justify-content: center;
-  transition: all 0.18s cubic-bezier(0.16,1,0.3,1);
-  box-shadow: 0 1px 4px rgba(0,0,0,0.25);
+  transition: box-shadow .2s ease;
+  flex-shrink: 0; flex-grow: 0;
 }
-.ctrl-btn:hover { background: var(--bg-5); border-color: var(--bdr-med); color: var(--tx-1); transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
-.ctrl-btn:active { transform: translateY(0) scale(0.96); }
-.ctrl-btn.off { background: var(--red-dim); border-color: rgba(184,96,96,0.25); color: var(--red-lt); }
-.ctrl-btn.off:hover { background: rgba(184,96,96,0.22); border-color: rgba(184,96,96,0.4); }
-.ctrl-btn.active-on { background: var(--amber-dim); border-color: rgba(201,147,90,0.3); color: var(--amber); }
-.ctrl-btn.end-call { background: linear-gradient(145deg, #a04040, #7a2c2c); border-color: rgba(184,80,80,0.4); color: #f0d0d0; width: 56px; height: 56px; box-shadow: 0 2px 12px rgba(160,64,64,0.3); }
-.ctrl-btn.end-call:hover { background: linear-gradient(145deg, #b04848, #8a3434); box-shadow: 0 4px 18px rgba(160,64,64,0.4); transform: translateY(-1px); }
+.participant-tile.speaking {
+  box-shadow: 0 0 0 2.5px var(--success), 0 0 16px rgba(54,196,122,.18);
+}
+.participant-tile video {
+  width: 100%; height: 100%;
+  object-fit: cover; display: none;
+}
+/* Mirror ONLY the local camera tile */
+.participant-tile.local-tile video { transform: scaleX(-1); }
+.participant-tile.has-video video { display: block; }
+.participant-tile.has-video .video-off-placeholder { display: none; }
 
-.ctrl-label { font-size: 0.6rem; color: var(--tx-4); letter-spacing: 0.03em; font-weight: 400; text-align: center; white-space: nowrap; }
+/* Screen share tiles: never mirror, contain (don't crop) */
+.participant-tile.screen-share-tile {
+  aspect-ratio: auto;
+  width: 100%;
+  flex-basis: 100%;
+  border: 2px solid var(--accent);
+  background: #06080e;
+}
+.participant-tile.screen-share-tile video {
+  transform: none !important;
+  object-fit: contain;
+}
 
-/* Toast */
-#toast { position: fixed; bottom: calc(var(--controls-h) + 1rem); left: 50%; transform: translateX(-50%) translateY(12px); background: var(--bg-4); border: 1px solid var(--bdr-med); border-radius: var(--r-md); padding: 0.55rem 1.1rem; font-size: 0.8rem; color: var(--tx-2); opacity: 0; transition: opacity 0.22s, transform 0.22s cubic-bezier(0.16,1,0.3,1); pointer-events: none; z-index: 999; white-space: nowrap; box-shadow: 0 4px 20px rgba(0,0,0,0.4); }
+.video-off-placeholder {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .75rem; width: 100%; height: 100%;
+  background: var(--surface);
+}
+.avatar {
+  width: 72px; height: 72px; border-radius: 50%;
+  background: linear-gradient(135deg, #5b73f5 0%, #7c3aed 100%);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.65rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.participant-tile::after {
+  content: ''; position: absolute; bottom: 0; left: 0; right: 0; height: 60px;
+  background: linear-gradient(0deg, rgba(0,0,0,.65) 0%, transparent 100%);
+  pointer-events: none;
+}
+.tile-name {
+  position: absolute; bottom: .5rem; left: .6rem;
+  display: flex; align-items: center; gap: .35rem;
+  font-size: .76rem; font-weight: 500; color: #fff;
+  z-index: 2; max-width: calc(100% - 5rem);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.muted-icon { color: var(--danger); flex-shrink: 0; display: flex; align-items: center; }
+.muted-icon svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.local-badge {
+  position: absolute; top: .55rem; left: .55rem;
+  background: rgba(91,115,245,.2); border: 1px solid rgba(91,115,245,.35);
+  color: #a5b4fc; border-radius: 5px; padding: .1rem .45rem;
+  font-size: .63rem; font-weight: 700; letter-spacing: .4px; z-index: 2;
+}
+.tile-net-quality {
+  position: absolute; top: .55rem; right: .55rem;
+  display: flex; align-items: flex-end; gap: 1px; z-index: 2;
+}
+.tile-net-quality .bar {
+  width: 3px; border-radius: 1px; background: var(--text3); transition: background .3s;
+}
+.tile-net-quality .bar:nth-child(1) { height: 5px; }
+.tile-net-quality .bar:nth-child(2) { height: 8px; }
+.tile-net-quality .bar:nth-child(3) { height: 11px; }
+.tile-net-quality.good .bar { background: var(--success); }
+.tile-net-quality.fair .bar:nth-child(3) { background: var(--text3); }
+.tile-net-quality.fair .bar:not(:nth-child(3)) { background: var(--warn); }
+.tile-net-quality.poor .bar:not(:first-child) { background: var(--text3); }
+.tile-net-quality.poor .bar:first-child { background: var(--danger); }
+
+.waiting-overlay {
+  position: absolute; inset: 0;
+  background: rgba(10,12,20,.65);
+  -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px);
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: .75rem; z-index: 5;
+}
+.waiting-overlay .pulse-ring {
+  width: 48px; height: 48px; border-radius: 50%;
+  border: 1.5px solid var(--success);
+  animation: pulseRing 1.5s ease-out infinite;
+}
+.waiting-overlay p { font-size: .76rem; color: rgba(255,255,255,.45); }
+
+.reconnecting-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  background: rgba(10,12,20,.85);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  display: none; flex-direction: column;
+  align-items: center; justify-content: center;
+  gap: 1rem; color: var(--text);
+}
+.reconnecting-overlay.show { display: flex; }
+.reconnecting-overlay .spinner-lg {
+  width: 32px; height: 32px;
+  border: 3px solid rgba(255,255,255,.2); border-top-color: var(--accent);
+  border-radius: 50%; animation: spin .8s linear infinite;
+}
+
+/* ── Controls Bar ────────────────────────────── */
+.controls {
+  position: absolute;
+  bottom: 16px; left: 50%;
+  transform: translateX(-50%);
+  height: var(--ctrl-h);
+  z-index: 35;
+  display: flex; align-items: center; gap: .5rem;
+  padding: 0 1.2rem;
+  background: rgba(17,20,35,.94);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid var(--border2);
+  border-radius: 999px;
+  box-shadow: 0 8px 32px rgba(5,7,16,.7), 0 1px 0 rgba(130,142,200,.05) inset;
+}
+.ctrl-divider { width: 1px; height: 28px; background: var(--border2); margin: 0 .2rem; flex-shrink: 0; }
+.ctrl-wrap { display: flex; flex-direction: column; align-items: center; gap: .22rem; position: relative; }
+.ctrl-btn {
+  width: 46px; height: 46px; border-radius: 50%;
+  background: var(--surface3); border: 1px solid var(--border);
+  color: var(--text); font-size: 1rem;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, border-color .15s, transform .12s;
+  flex-shrink: 0;
+}
+.ctrl-btn svg {
+  width: 20px; height: 20px;
+  fill: none; stroke: currentColor;
+  stroke-width: 2; stroke-linecap: round; stroke-linejoin: round;
+}
+.ctrl-btn:hover  { background: var(--surface4); border-color: var(--border2); transform: scale(1.07); }
+.ctrl-btn:active { transform: scale(.94); }
+.ctrl-btn.off {
+  background: rgba(239,68,68,.15); border-color: rgba(239,68,68,.3); color: var(--danger);
+}
+.ctrl-btn.off:hover { background: rgba(239,68,68,.22); }
+.ctrl-btn.active {
+  background: rgba(91,115,245,.18); border-color: rgba(91,115,245,.38); color: #a5b4fc;
+}
+.ctrl-btn.active:hover { background: rgba(91,115,245,.26); }
+.ctrl-btn.danger {
+  width: 50px; height: 50px;
+  background: var(--danger); border-color: transparent; color: #fff;
+  box-shadow: 0 3px 12px rgba(232,86,86,.32);
+}
+.ctrl-btn.danger:hover { background: var(--danger-h); transform: scale(1.07); border-color: transparent; }
+.ctrl-label { font-size: .6rem; color: var(--text3); font-weight: 500; white-space: nowrap; }
+.unread-badge {
+  position: absolute; top: -3px; right: -3px;
+  background: var(--danger); color: #fff;
+  width: 16px; height: 16px; border-radius: 50%;
+  font-size: .6rem; font-weight: 700;
+  display: none; align-items: center; justify-content: center;
+  pointer-events: none;
+}
+.unread-badge.show { display: flex; }
+
+/* ── SIDE PANELS ─────────────────────────────── */
+.side-panel {
+  position: absolute; top: 0; right: 0; bottom: 0;
+  width: 320px; z-index: 40;
+  background: rgba(16,19,31,.97);
+  -webkit-backdrop-filter: blur(20px); backdrop-filter: blur(20px);
+  border-left: 1px solid var(--border2);
+  display: flex; flex-direction: column;
+  transform: translateX(100%);
+  transition: transform .28s cubic-bezier(.4,0,.2,1);
+  box-shadow: -8px 0 30px rgba(5,7,16,.55);
+}
+.side-panel.open { transform: translateX(0); }
+.panel-header {
+  height: 52px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 1rem; border-bottom: 1px solid var(--border);
+}
+.panel-header-left { display: flex; align-items: center; gap: .5rem; }
+.panel-header h3 { font-size: .84rem; font-weight: 600; color: var(--text); }
+.panel-header-pill {
+  font-size: .65rem; font-weight: 600; color: var(--text3);
+  background: var(--surface2); border-radius: 20px;
+  padding: .1rem .5rem; border: 1px solid var(--border);
+}
+.panel-close {
+  width: 28px; height: 28px; border-radius: 6px;
+  background: none; color: var(--text3);
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, color .15s;
+}
+.panel-close svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.panel-close:hover { background: var(--surface2); color: var(--text); }
+
+/* Chat */
+.chat-messages {
+  flex: 1; overflow-y: auto; padding: .75rem;
+  display: flex; flex-direction: column; gap: .4rem;
+  scroll-behavior: smooth;
+}
+.chat-messages::-webkit-scrollbar { width: 3px; }
+.chat-messages::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+.chat-empty { margin: auto; text-align: center; color: var(--text3); font-size: .8rem; line-height: 1.6; }
+.chat-sys-msg { text-align: center; font-size: .7rem; color: var(--text3); padding: .2rem 0; font-style: italic; }
+.chat-msg { display: flex; flex-direction: column; gap: .15rem; max-width: 92%; animation: msgIn .18s ease; }
+.chat-msg.self { align-self: flex-end; }
+.chat-msg.other { align-self: flex-start; }
+.chat-meta { font-size: .65rem; color: var(--text3); font-weight: 500; display: flex; gap: .35rem; align-items: baseline; padding: 0 .35rem; }
+.chat-msg.self .chat-meta { flex-direction: row-reverse; }
+.chat-sender { color: var(--accent-h); font-weight: 600; }
+.chat-msg.self .chat-sender { color: #b8a9fc; }
+.chat-text {
+  padding: .5rem .7rem; border-radius: 12px;
+  font-size: .83rem; line-height: 1.45;
+  word-break: break-word; white-space: pre-wrap; color: var(--text);
+}
+.chat-msg.self  .chat-text { background: #5b73f5; border-bottom-right-radius: 3px; }
+.chat-msg.other .chat-text { background: var(--surface3); border-bottom-left-radius: 3px; }
+.chat-input-wrap {
+  flex-shrink: 0; padding: .65rem .75rem;
+  border-top: 1px solid var(--border);
+  display: flex; align-items: flex-end; gap: .5rem;
+}
+.chat-input {
+  flex: 1; min-width: 0; background: var(--surface2);
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: .55rem .75rem; color: var(--text);
+  font-family: var(--font); font-size: .82rem; line-height: 1.4;
+  resize: none; max-height: 90px; overflow-y: auto;
+  transition: border-color .18s;
+}
+.chat-input:focus { border-color: var(--accent); }
+.chat-input::placeholder { color: var(--text3); }
+.chat-send {
+  width: 36px; height: 36px; border-radius: 8px; flex-shrink: 0;
+  background: var(--accent); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  transition: background .15s, transform .12s;
+}
+.chat-send svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.chat-send:hover  { background: var(--accent-h); transform: scale(1.06); }
+.chat-send:active { transform: scale(.94); }
+.chat-send:disabled { opacity: .35; cursor: not-allowed; transform: none; }
+
+/* Participants */
+.participant-list { flex: 1; overflow-y: auto; padding: .5rem; }
+.participant-list::-webkit-scrollbar { width: 3px; }
+.participant-list::-webkit-scrollbar-thumb { background: var(--surface3); border-radius: 3px; }
+.participant-item {
+  display: flex; align-items: center; gap: .6rem;
+  padding: .55rem .6rem; border-radius: 8px; transition: background .12s;
+}
+.participant-item:hover { background: rgba(255,255,255,.04); }
+.participant-item .p-avatar {
+  width: 32px; height: 32px; border-radius: 50%;
+  background: linear-gradient(135deg, #5b73f5, #7c3aed);
+  display: flex; align-items: center; justify-content: center;
+  font-size: .7rem; font-weight: 700; color: #fff; flex-shrink: 0;
+}
+.participant-item .p-info { flex: 1; min-width: 0; }
+.participant-item .p-name {
+  font-size: .8rem; font-weight: 500; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: flex; align-items: center; gap: .35rem;
+}
+.participant-item .p-you { font-size: .6rem; color: var(--accent); font-weight: 700; background: rgba(91,115,245,.14); padding: .05rem .3rem; border-radius: 3px; }
+.participant-item .p-admin { font-size: .6rem; color: var(--warn); font-weight: 700; background: rgba(245,158,11,.12); padding: .05rem .3rem; border-radius: 3px; }
+.participant-item .p-status { display: flex; align-items: center; gap: .4rem; }
+.participant-item .p-status .status-icon {
+  display: inline-flex; align-items: center; color: var(--text3);
+}
+.participant-item .p-status .status-icon.off { color: var(--danger); }
+.participant-item .p-status .status-icon svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.p-remove-btn {
+  width: 26px; height: 26px; border-radius: 6px;
+  background: rgba(239,68,68,.1); border: 1px solid rgba(239,68,68,.15);
+  color: var(--danger); display: none; align-items: center; justify-content: center;
+  transition: background .15s; flex-shrink: 0;
+}
+.p-remove-btn svg { width: 14px; height: 14px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.p-remove-btn:hover { background: rgba(239,68,68,.22); }
+.participant-item:hover .p-remove-btn.visible { display: flex; }
+
+.admin-controls { display: none; flex-direction: column; gap: .4rem; padding: .6rem; border-top: 1px solid var(--border); }
+.admin-controls.show { display: flex; }
+.admin-control-btn {
+  width: 100%; padding: .5rem; border-radius: 7px;
+  font-size: .76rem; font-weight: 600;
+  background: var(--surface3); border: 1px solid var(--border);
+  color: var(--text); transition: background .15s;
+  display: flex; align-items: center; justify-content: center; gap: .4rem;
+}
+.admin-control-btn svg { width: 16px; height: 16px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.admin-control-btn:hover { background: var(--surface4); }
+.admin-control-btn.danger-outline {
+  background: rgba(239,68,68,.08); border-color: rgba(239,68,68,.2); color: var(--danger);
+}
+.admin-control-btn.danger-outline:hover { background: rgba(239,68,68,.15); }
+
+/* ── TOAST ────────────────────────────────────── */
+#toast {
+  position: fixed; bottom: calc(var(--ctrl-h) + 28px); left: 50%;
+  transform: translateX(-50%) translateY(8px);
+  background: rgba(20,23,38,.97);
+  -webkit-backdrop-filter: blur(8px); backdrop-filter: blur(8px);
+  border: 1px solid var(--border2); border-radius: 8px; padding: .45rem 1rem;
+  font-size: .78rem; font-weight: 500; color: var(--text2);
+  opacity: 0;
+  transition: opacity .25s, transform .25s;
+  pointer-events: none; z-index: 999;
+  white-space: nowrap; box-shadow: 0 6px 20px rgba(5,7,16,.6);
+}
 #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
-/* Animations */
-@keyframes lobbyIn { from { opacity: 0; transform: scale(0.97) translateY(8px); } to { opacity: 1; transform: none; } }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes livePulse { 0%,100% { box-shadow: 0 0 6px rgba(106,170,122,0.6); } 50% { box-shadow: 0 0 3px rgba(106,170,122,0.2); } }
-@keyframes pulseRing { 0% { transform: scale(0.82); opacity: 0.8; } 100% { transform: scale(1.45); opacity: 0; } }
-@keyframes msgIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
-
-/* Responsive */
-@media (max-width: 900px) {
-  .lobby-wrap { grid-template-columns: 1fr; min-height: unset; }
-  .lobby-brand { display: none; }
-  .lobby-form-panel { padding: 2.5rem 2rem; }
-  .room-sidebar { display: none; }
-  .room-sidebar.mobile-open { display: flex; position: fixed; right: 0; top: var(--header-h); bottom: var(--controls-h); z-index: 50; width: min(var(--chat-w), 100vw); box-shadow: -8px 0 32px rgba(0,0,0,0.4); opacity: 1; transform: none; pointer-events: all; }
+/* ── Shortcuts Modal ─────────────────────────── */
+.shortcuts-modal {
+  position: fixed; inset: 0; z-index: 300;
+  background: rgba(8,10,18,.78);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  display: none; align-items: center; justify-content: center;
+}
+.shortcuts-modal.show { display: flex; }
+.shortcuts-modal-content {
+  background: var(--surface); border: 1px solid var(--border2);
+  border-radius: 12px; padding: 1.5rem; max-width: 380px; width: 90%;
+}
+.shortcuts-modal h3 { font-size: .95rem; margin-bottom: .8rem; }
+.shortcut-row { display: flex; justify-content: space-between; padding: .3rem 0; font-size: .8rem; color: var(--text2); }
+.shortcut-row kbd {
+  background: var(--surface3); border: 1px solid var(--border2);
+  border-radius: 4px; padding: .1rem .4rem; font-size: .72rem;
+  font-family: var(--font); color: var(--text);
 }
 
+/* ── ANIMATIONS ──────────────────────────────── */
+@keyframes fadeUp    { from{opacity:0;transform:translateY(18px)} to{opacity:1;transform:none} }
+@keyframes spin      { to{transform:rotate(360deg)} }
+@keyframes pulse     { 0%,100%{opacity:1} 50%{opacity:.3} }
+@keyframes pulseRing { 0%{transform:scale(.75);opacity:1} 100%{transform:scale(1.5);opacity:0} }
+@keyframes msgIn     { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:none} }
+
+/* ── RESPONSIVE ──────────────────────────────── */
+@media (max-width: 820px) {
+  .pj-wrap { flex-direction: column; align-items: center; gap: 1.5rem; }
+  .pj-preview { width: 100%; max-width: 480px; }
+  .pj-form { width: 100%; max-width: 480px; }
+  .side-panel { width: 100%; border-left: none; border-top: 1px solid var(--border2); }
+}
+@media (max-width: 768px) {
+  .room-name { max-width: 100px; }
+  .controls { gap: .35rem; padding: 0 .9rem; }
+}
 @media (max-width: 600px) {
-  :root { --header-h: 52px; --controls-h: 70px; }
-  .lobby-form-panel { padding: 2rem 1.5rem; }
-  .lobby-wrap { border-radius: var(--r-lg); }
-  .rh-logo, .rh-sep { display: none; }
-  .room-time { display: none; }
-  .ctrl-left { display: none; }
-  .ctrl-right { flex: unset; }
-  .ctrl-center { gap: 0.45rem; }
-  .ctrl-btn { width: 46px; height: 46px; }
-  .ctrl-btn.end-call { width: 50px; height: 50px; }
-  .video-grid { padding: 6px; gap: 6px; }
-  .avatar { width: 56px; height: 56px; font-size: 1.2rem; }
-
-  .room-controls{
-    margin-bottom: 7%;
-    border-radius: 10px;
-  }
+  .meeting-code-display { display: none; }
+  .meeting-timer { display: none; }
+  .room-header { padding: 0 .5rem; }
+  .room-name { max-width: 80px; }
 }
-
-/* ════════════════════════════════════════════
-   PLATFORM TOUR
-════════════════════════════════════════════ */
-.tour-trigger-btn {
-  position: absolute;
-  top: 16px;
-  left: 16px;
-  background: var(--amber);
-  border: none;
-  color: white;
-  padding: 0.5rem 0.9rem;
-  border-radius: 6px;
-  font-size: 0.8rem;
-  font-weight: 500;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 0.4rem;
-  transition: all 0.2s;
-  z-index: 40;
+@media (max-width: 480px) {
+  #lobby { padding: 1rem; }
+  .controls { padding: 0 .6rem; gap: .25rem; height: 62px; }
+  .ctrl-btn { width: 40px; height: 40px; }
+  .ctrl-btn svg { width: 18px; height: 18px; }
+  .ctrl-btn.danger { width: 42px; height: 42px; }
+  .ctrl-label { display: none; }
+  .ctrl-divider { height: 22px; margin: 0; }
+  .room-name { display: none; }
+  .video-stage { padding: 4px 4px calc(62px + 8px) 4px; overflow-y: auto; overflow-x: hidden; align-items: flex-start; }
+  .video-grid { align-content: flex-start; }
+  .participant-count { font-size: .65rem; }
 }
-
-.tour-trigger-btn:hover {
-  background: rgba(201,147,90,0.8);
-  transform: translateY(-2px);
+@media (max-width: 360px) {
+  .controls { padding: 0 .45rem; gap: .15rem; }
+  .ctrl-btn { width: 36px; height: 36px; }
+  .ctrl-btn svg { width: 16px; height: 16px; }
+  .ctrl-btn.danger { width: 38px; height: 38px; }
+  .ctrl-divider { display: none; }
 }
-
-.tour-modal {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.tour-modal.hidden {
-  display: none;
-}
-
-.tour-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0,0,0,0.5);
-  backdrop-filter: blur(2px);
-}
-
-.tour-card {
-  position: relative;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 480px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-  animation: tourCardIn 0.3s ease-out;
-}
-
-@keyframes tourCardIn {
-  from {
-    opacity: 0;
-    transform: scale(0.95) translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) translateY(0);
-  }
-}
-
-.tour-close {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: transparent;
-  border: none;
-  color: var(--tx-2);
-  cursor: pointer;
-  padding: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  z-index: 101;
-}
-
-.tour-close:hover {
-  color: var(--tx-1);
-  transform: rotate(90deg);
-}
-
-.tour-content {
-  padding: 2.5rem 2rem 2rem 2rem;
-  min-height: 320px;
-}
-
-.tour-step {
-  display: none;
-  text-align: center;
-  animation: tourStepIn 0.4s ease-out;
-}
-
-.tour-step:not(.hidden) {
-  display: block;
-}
-
-@keyframes tourStepIn {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.tour-icon {
-  width: 64px;
-  height: 64px;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin: 0 auto 1.2rem;
-}
-
-.tour-step h3 {
-  font-size: 1.3rem;
-  font-weight: 600;
-  color: var(--tx-1);
-  margin-bottom: 0.8rem;
-}
-
-.tour-step p {
-  font-size: 0.95rem;
-  color: var(--tx-2);
-  line-height: 1.6;
-  margin: 0.6rem 0;
-}
-
-.tour-nav {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 1.5rem 2rem;
-  border-top: 1px solid var(--border);
-  background: var(--bg-2);
-  border-radius: 0 0 12px 12px;
-  gap: 1rem;
-}
-
-.tour-btn-prev,
-.tour-btn-next {
-  background: var(--amber);
-  border: none;
-  color: white;
-  padding: 0.7rem 1.2rem;
-  border-radius: 6px;
-  font-size: 0.85rem;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.tour-btn-prev:hover:not(:disabled),
-.tour-btn-next:hover:not(:disabled) {
-  background: rgba(201,147,90,0.8);
-  transform: translateY(-2px);
-}
-
-.tour-btn-prev:disabled,
-.tour-btn-next:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-}
-
-.tour-counter {
-  font-size: 0.8rem;
-  color: var(--tx-3);
-  font-weight: 500;
-}
-
-@media (max-width: 640px) {
-  .tour-card {
-    width: 95%;
-    max-height: 85vh;
-  }
-  .tour-content {
-    padding: 2rem 1.5rem 1.5rem;
-  }
-  .tour-nav {
-    padding: 1rem 1.5rem;
-    flex-direction: column;
-  }
-  .tour-btn-prev,
-  .tour-btn-next {
-    width: 100%;
-  }
-}
-
-@media (min-width: 1440px) { :root { --chat-w: 340px; } }
 </style>
 </head>
 <body>
 
-<!-- SVG Icon Sprite -->
-<svg xmlns="http://www.w3.org/2000/svg" style="display:none">
-  <symbol id="ic-cam-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
-    <rect x="3" y="7" width="12" height="10" rx="2"/>
-  </symbol>
-  <symbol id="ic-cam-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
-    <rect x="3" y="7" width="12" height="10" rx="2"/>
-    <line x1="3" y1="3" x2="21" y2="21"/>
-  </symbol>
-  <symbol id="ic-mic-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="9" y="2" width="6" height="11" rx="3"/>
-    <path d="M5 10a7 7 0 0014 0"/>
-    <line x1="12" y1="17" x2="12" y2="21"/>
-    <line x1="9" y1="21" x2="15" y2="21"/>
-  </symbol>
-  <symbol id="ic-mic-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="9" y="2" width="6" height="11" rx="3"/>
-    <path d="M5 10a7 7 0 0014 0"/>
-    <line x1="12" y1="17" x2="12" y2="21"/>
-    <line x1="9" y1="21" x2="15" y2="21"/>
-    <line x1="3" y1="3" x2="21" y2="21"/>
-  </symbol>
-  <symbol id="ic-endcall" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10.68 13.31a16 16 0 003.41 2.6l1.27-1.27a2 2 0 012.11-.45 12.84 12.84 0 002.81.7 2 2 0 011.72 2v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.42 19.42 0 013.43 9.19a2 2 0 012-2.18h3a2 2 0 012 1.72c.11.96.31 1.9.7 2.81a2 2 0 01-.45 2.11L10.68 14z"/>
-    <line x1="23" y1="1" x2="1" y2="23"/>
-  </symbol>
-  <symbol id="ic-chat" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
-  </symbol>
-  <symbol id="ic-people" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
-    <circle cx="9" cy="7" r="4"/>
-    <path d="M23 21v-2a4 4 0 00-3-3.87"/>
-    <path d="M16 3.13a4 4 0 010 7.75"/>
-  </symbol>
-  <symbol id="ic-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="22" y1="2" x2="11" y2="13"/>
-    <polygon points="22 2 15 22 11 13 2 9 22 2"/>
-  </symbol>
-  <symbol id="ic-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <circle cx="12" cy="12" r="10"/>
-    <line x1="12" y1="8" x2="12" y2="8.01" stroke-width="2.5"/>
-    <line x1="12" y1="11" x2="12" y2="17"/>
-  </symbol>
-  <symbol id="ic-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="3" y="11" width="18" height="11" rx="2"/>
-    <path d="M7 11V7a5 5 0 0110 0v4"/>
-  </symbol>
-  <symbol id="ic-room" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
-    <rect x="3" y="7" width="12" height="10" rx="2"/>
-  </symbol>
-  <symbol id="ic-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
-    <circle cx="12" cy="7" r="4"/>
-  </symbol>
-  <symbol id="ic-arrow-right" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-    <line x1="5" y1="12" x2="19" y2="12"/>
-    <polyline points="12 5 19 12 12 19"/>
-  </symbol>
-  <symbol id="ic-mic-off-sm" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-    <rect x="5" y="1" width="6" height="8" rx="3"/>
-    <path d="M2 8a6 6 0 0012 0"/>
-    <line x1="8" y1="14" x2="8" y2="15.5"/>
-    <line x1="5.5" y1="15.5" x2="10.5" y2="15.5"/>
-    <line x1="1" y1="1" x2="15" y2="15"/>
-  </symbol>
-</svg>
-
-<!-- ════════════════════════════════════════════════
-     LOBBY
-════════════════════════════════════════════════ -->
-<div id="lobby">
-  <div class="lobby-wrap">
-
-    <!-- Tour Button -->
-    <button id="tour-btn" class="tour-trigger-btn" onclick="startTour()" title="Learn how to join a meeting">
-      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <circle cx="12" cy="12" r="10"></circle>
-        <path d="M12 16v-4M12 8h.01"></path>
-      </svg>
-      <span>How it works</span>
-    </button>
-
-    <div class="lobby-brand">
-      <div class="brand-logo">
-        <div class="brand-logo-mark">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#1a1510" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
-            <rect x="3" y="7" width="12" height="10" rx="2"/>
-          </svg>
-        </div>
-        <span class="brand-logo-text">Meet<em>Kit</em></span>
+<!-- ── PRE-JOIN LOBBY ────────────────────────── -->
+<section id="lobby" role="dialog" aria-label="Join Meeting">
+  <div class="pj-wrap">
+    <div class="pj-preview" id="pj-preview-wrap" role="region" aria-label="Camera Preview">
+      <video id="pj-video" autoplay playsinline muted></video>
+      <div class="pj-cam-off" id="pj-cam-off" aria-hidden="true">
+        <span class="icon-svg icon-xl"><svg viewBox="0 0 24 24"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg></span>
+        <span>Camera is off</span>
       </div>
-      <div class="brand-hero">
-        <h2>Video rooms,<br><em>instantly</em> ready.</h2>
-        <p>HD video calls with real-time chat.<br>No downloads. No sign-up required.<br>Share a room name — everyone joins.</p>
-      </div>
-      <div class="brand-features">
-        <div class="brand-feat"><div class="feat-dot"></div>HD 720p video</div>
-        <div class="brand-feat"><div class="feat-dot"></div>Live room chat</div>
-        <div class="brand-feat"><div class="feat-dot"></div>End-to-end encrypted</div>
-        <div class="brand-feat"><div class="feat-dot"></div>Works on any device</div>
-      </div>
-    </div>
-
-    <div class="lobby-form-panel">
-      <div class="lobby-mode-tabs">
-        <button class="mode-tab active" id="mode-join-tab" onclick="switchMode('join')">Join Room</button>
-        <button class="mode-tab" id="mode-create-tab" onclick="switchMode('create')">Create Room</button>
-      </div>
-
-      <!-- Join Room Mode -->
-      <div id="mode-join" class="lobby-mode-content active">
-        <h3>Join a meeting</h3>
-        <p class="form-sub">Enter room details to get started.</p>
-
-        <div class="field">
-          <label>Room Name</label>
-          <div class="field-input-wrap">
-            <span class="field-icon"><svg width="15" height="15"><use href="#ic-room"/></svg></span>
-            <input id="room-input" type="text" placeholder="e.g. design-review" autocomplete="off" spellcheck="false"/>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Your Name</label>
-          <div class="field-input-wrap">
-            <span class="field-icon"><svg width="15" height="15"><use href="#ic-user"/></svg></span>
-            <input id="name-input" type="text" placeholder="e.g. Alice" autocomplete="off"/>
-          </div>
-        </div>
-
-        <button class="btn-join" id="join-btn" onclick="joinRoom()">
-          <span class="btn-icon"><svg width="16" height="16"><use href="#ic-arrow-right"/></svg></span>
-          <span class="btn-text">Join Room</span>
-          <div class="spinner"></div>
+      <div class="pj-preview-controls">
+        <button class="pj-pill-btn" id="pj-mic-btn" onclick="pjToggleMic()" aria-label="Toggle microphone">
+          <span class="icon-svg" id="pj-mic-icon"><svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg></span>
+          <span id="pj-mic-label">Mic</span>
         </button>
-
-        <div id="error-msg"></div>
-
-        <div class="lobby-divider"><span>private &amp; encrypted</span></div>
-        <p class="lobby-hint">
-          <svg width="12" height="12" style="vertical-align:-2px;margin-right:4px;opacity:.45"><use href="#ic-lock"/></svg>
-          Join using a room name and your display name.
-        </p>
-      </div>
-
-      <!-- Create Room Mode -->
-      <div id="mode-create" class="lobby-mode-content">
-        <h3>Create a meeting</h3>
-        <p class="form-sub">Generate a unique room with a shareable link.</p>
-
-        <div class="field">
-          <label>Your Display Name</label>
-          <div class="field-input-wrap">
-            <span class="field-icon"><svg width="15" height="15"><use href="#ic-user"/></svg></span>
-            <input id="create-name-input" type="text" placeholder="e.g. Alice" autocomplete="off"/>
-          </div>
-        </div>
-
-        <div class="field">
-          <label>Room Name</label>
-          <div class="field-input-wrap">
-            <span class="field-icon"><svg width="15" height="15"><use href="#ic-room"/></svg></span>
-            <input id="create-room-input" type="text" placeholder="e.g. team-sync" autocomplete="off" spellcheck="false"/>
-          </div>
-        </div>
-
-        <button class="btn-join" id="create-btn" onclick="createRoom()">
-          <span class="btn-icon"><svg width="16" height="16"><use href="#ic-arrow-right"/></svg></span>
-          <span class="btn-text">Generate Link</span>
-          <div class="spinner"></div>
+        <button class="pj-pill-btn" id="pj-cam-btn" onclick="pjToggleCam()" aria-label="Toggle camera">
+          <span class="icon-svg" id="pj-cam-icon"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></span>
+          <span id="pj-cam-label">Camera</span>
         </button>
+      </div>
+    </div>
 
-        <div id="create-error-msg"></div>
-
-        <div id="room-created-info" style="display:none; margin-top: 1.2rem; padding: 0.9rem; background: var(--green-dim); border: 1px solid rgba(106,170,122,0.25); border-radius: var(--r-md);">
-          <div style="font-size: 0.75rem; color: var(--tx-3); font-weight: 500; letter-spacing: 0.08em; text-transform: uppercase; margin-bottom: 0.5rem;">Meeting Created</div>
-          <div style="font-size: 0.8rem; color: var(--tx-2); margin-bottom: 0.8rem; word-break: break-all;">
-            <strong id="created-room-name"></strong> <br>
-            <span style="color: var(--tx-3);">Code: <code id="created-room-code" style="background: rgba(0,0,0,0.2); padding: 0.15rem 0.4rem; border-radius: 3px; font-family: monospace; font-size: 0.85rem; font-weight: 600;"></code></span>
-          </div>
-          <div style="display: flex; gap: 0.5rem; margin-bottom: 0.8rem;">
-            <input type="text" id="meeting-url-display" readonly style="flex:1; background: var(--bg-3); border: 1px solid var(--bdr); border-radius: var(--r-sm); padding: 0.5rem 0.7rem; font-size: 0.75rem; color: var(--tx-2); font-family: monospace; cursor: text;"/>
-            <button onclick="copyMeetingUrl()" style="padding: 0.5rem 0.8rem; background: var(--green); border: none; border-radius: var(--r-sm); color: #1a1510; font-size: 0.75rem; font-weight: 600; cursor: pointer; white-space: nowrap;">Copy</button>
-          </div>
-          <button class="btn-join" id="join-created-btn" onclick="joinCreatedRoom()" style="margin-top: 0.5rem;">
-            <span class="btn-text">Join This Room</span>
-          </button>
-          <div style="background: var(--amber-dim, rgba(201,147,90,0.1)); border: 1px solid var(--amber, rgba(201,147,90,0.3)); padding: 0.7rem; border-radius: 6px; margin-top: 0.8rem; font-size: 0.75rem; color: var(--tx-2);">
-            <p style="margin: 0 0 0.4rem; font-weight: 500; color: var(--amber, #c9935a);">⭐ Admin Tip:</p>
-            <p style="margin: 0;">When you click "Join This Room" above, your name will be auto-filled as the creator. <strong>Keep this name the same</strong> to become the room admin and get the ability to remove unwanted participants.</p>
-          </div>
+    <div class="pj-form" role="form" aria-label="Meeting details">
+      <div class="pj-logo">
+        <div class="pj-logo-mark" aria-hidden="true"><svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></div>
+        <h1>MeetKit</h1>
+      </div>
+      <div class="pj-section">
+        <div class="pj-section-title">Join a Room</div>
+        <div class="pj-field">
+          <label for="room-input">Room name</label>
+          <input id="room-input" class="pj-input" type="text" placeholder="e.g. team-standup" autocomplete="off" maxlength="128" aria-required="true" />
         </div>
-
-        <div class="lobby-divider"><span>instant &amp; unique</span></div>
-        <p class="lobby-hint">
-          <svg width="12" height="12" style="vertical-align:-2px;margin-right:4px;opacity:.45"><use href="#ic-lock"/></svg>
-          Share the link with others. Each room has a unique ID.
-        </p>
+        <div class="pj-field">
+          <label for="name-input">Your name</label>
+          <input id="name-input" class="pj-input" type="text" placeholder="e.g. Alice" autocomplete="off" maxlength="64" aria-required="true" />
+        </div>
       </div>
-    </div>
-
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════
-     MEETING ROOM
-════════════════════════════════════════════════ -->
-<div id="room">
-
-  <header class="room-header">
-    <div class="rh-left">
-      <a class="rh-logo" href="#" onclick="return false;">Meet<em>Kit</em></a>
-      <div class="rh-sep"></div>
-      <div class="room-badge">
-        <div class="room-live-dot"></div>
-        <span class="room-name-text" id="room-title">Room</span>
+      <div class="pj-divider"></div>
+      <div class="pj-section">
+        <div class="pj-section-title">Devices</div>
+        <div class="pj-field">
+          <label for="pj-cam-select">Camera</label>
+          <div class="pj-device-select"><select id="pj-cam-select" onchange="pjSwitchCam()" aria-label="Select camera"></select></div>
+        </div>
+        <div class="pj-field">
+          <label for="pj-mic-select">Microphone</label>
+          <div class="pj-device-select"><select id="pj-mic-select" aria-label="Select microphone"></select></div>
+        </div>
       </div>
-      <div class="p-count-badge">
-        <svg width="13" height="13"><use href="#ic-people"/></svg>
-        <span id="p-count">1</span>
-      </div>
-    </div>
-    <div class="rh-right">
-      <span class="room-time" id="room-clock">00:00</span>
-      <button class="hdr-btn" title="Room info">
-        <svg width="15" height="15"><use href="#ic-info"/></svg>
+      <button class="btn-join" id="join-btn" onclick="joinRoom()" aria-label="Join Meeting">
+        <span class="btn-text">Join Meeting →</span>
+        <div class="spinner" aria-hidden="true"></div>
       </button>
+      <div id="error-msg" role="alert" aria-live="polite"></div>
     </div>
-  </header>
+  </div>
+</section>
 
-  <div class="room-body">
+<!-- ── MEETING ROOM ──────────────────────────── -->
+<main id="room">
+  <nav class="room-header" aria-label="Meeting information">
+    <div class="room-info">
+      <div class="room-dot" aria-hidden="true"></div>
+      <span class="room-name" id="room-title"></span>
+      <button class="meeting-code-display" id="meeting-code-btn" onclick="copyMeetingLink()" title="Click to copy meeting link" aria-label="Copy meeting link" style="display:none"></button>
+      <span class="participant-count" id="p-count" aria-live="polite">1</span>
+      <span class="meeting-timer" id="meeting-timer" aria-label="Meeting duration">00:00</span>
+      <div class="net-quality" id="net-quality" title="Connection quality" aria-label="Connection quality">
+        <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-leave" onclick="leaveRoom()" aria-label="Leave meeting">Leave</button>
+    </div>
+  </nav>
+
+  <div class="room-main">
     <div class="video-stage">
-      <div class="video-grid grid-1" id="video-grid"></div>
+      <div class="video-grid" id="video-grid" role="region" aria-label="Video participants"></div>
+      <div class="empty-room-msg" id="empty-room-msg">
+        <span class="icon-svg icon-xl" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg></span>
+        <span>No one else is here yet</span>
+        <span style="font-size:.75rem;color:var(--text3)">Share the meeting link to invite others</span>
+      </div>
     </div>
 
-    <aside class="room-sidebar hidden" id="room-sidebar">
-      <div class="sidebar-tabs">
-        <button class="sidebar-tab active" id="tab-chat" onclick="switchTab('chat')">
-          <svg width="13" height="13"><use href="#ic-chat"/></svg> Chat
-        </button>
-        <button class="sidebar-tab" id="tab-people" onclick="switchTab('people')">
-          <svg width="13" height="13"><use href="#ic-people"/></svg> People
-        </button>
-      </div>
-
-      <div class="sidebar-panel active" id="panel-chat">
-        <div class="chat-messages" id="chat-messages">
-          <div class="chat-empty" id="chat-empty">No messages yet.<br>Say hello to the room.</div>
+    <!-- Chat Panel -->
+    <aside class="side-panel" id="chat-panel" role="region" aria-label="Chat">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <h3>Chat</h3>
+          <span class="panel-header-pill" id="chat-title">Room</span>
         </div>
-        <div class="chat-input-area">
-          <div class="chat-input-row">
-            <textarea id="chat-input" class="chat-input" rows="1" maxlength="500" placeholder="Message the room…"></textarea>
-            <button id="chat-send" class="chat-send-btn" onclick="sendChatMessage()" title="Send">
-              <svg width="15" height="15"><use href="#ic-send"/></svg>
-            </button>
-          </div>
-        </div>
+        <button class="panel-close" onclick="toggleChat()" aria-label="Close chat"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
       </div>
+      <div class="chat-messages" id="chat-messages" aria-live="polite">
+        <div class="chat-empty" id="chat-empty">No messages yet.<br>Say hello to the room.</div>
+      </div>
+      <div class="chat-input-wrap">
+        <textarea id="chat-input" class="chat-input" rows="1" placeholder="Send a message…" maxlength="1000" oninput="autoResizeChat(this)" aria-label="Chat message"></textarea>
+        <button id="chat-send" class="chat-send" onclick="sendChatMessage()" title="Send" aria-label="Send message"><svg viewBox="0 0 24 24"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg></button>
+      </div>
+    </aside>
 
-      <div class="sidebar-panel" id="panel-people">
-        <div class="participants-list" id="participants-list"></div>
+    <!-- Participant List Panel -->
+    <aside class="side-panel" id="participants-panel" role="region" aria-label="Participants">
+      <div class="panel-header">
+        <div class="panel-header-left">
+          <h3>Participants</h3>
+          <span class="panel-header-pill" id="participants-count-pill">0</span>
+        </div>
+        <button class="panel-close" onclick="toggleParticipants()" aria-label="Close participants"><svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+      </div>
+      <div class="participant-list" id="participant-list"></div>
+      <div class="admin-controls" id="admin-controls">
+        <button class="admin-control-btn" onclick="muteAllParticipants()" aria-label="Mute all participants">
+          <svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>
+          Mute All
+        </button>
+        <button class="admin-control-btn danger-outline" onclick="endMeetingForAll()" aria-label="End meeting for all">
+          <svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+          End Meeting
+        </button>
       </div>
     </aside>
   </div>
 
-  <div class="room-controls">
-    <div class="ctrl-left">
-      <div class="ctrl-room-info">
-        <div class="ctrl-room-name" id="ctrl-room-name">Room</div>
-        <div class="ctrl-room-sub" id="ctrl-clock-sub">00:00</div>
-      </div>
+  <!-- Controls -->
+  <div class="controls" role="toolbar" aria-label="Meeting controls">
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" aria-label="Toggle microphone"></button>
+      <div class="ctrl-label" aria-hidden="true" id="mic-label">Mute</div>
     </div>
-
-    <div class="ctrl-center">
-      <div class="ctrl-btn-wrap">
-        <button class="ctrl-btn" id="mic-btn" onclick="toggleMic()" title="Toggle microphone (Ctrl+D)">
-          <svg width="20" height="20"><use href="#ic-mic-on" id="mic-icon"/></svg>
-        </button>
-        <span class="ctrl-label" id="mic-label">Mute</span>
-      </div>
-
-      <div class="ctrl-btn-wrap">
-        <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" title="Toggle camera (Ctrl+E)">
-          <svg width="20" height="20"><use href="#ic-cam-on" id="cam-icon"/></svg>
-        </button>
-        <span class="ctrl-label" id="cam-label">Camera</span>
-      </div>
-
-      <div class="ctrl-btn-wrap">
-        <button class="ctrl-btn end-call" onclick="leaveRoom()" title="Leave call">
-          <svg width="20" height="20"><use href="#ic-endcall"/></svg>
-        </button>
-        <span class="ctrl-label">Leave</span>
-      </div>
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn" id="cam-btn" onclick="toggleCam()" aria-label="Toggle camera"></button>
+      <div class="ctrl-label" aria-hidden="true" id="cam-label">Video</div>
     </div>
-
-    <div class="ctrl-right">
-      <div class="ctrl-btn-wrap">
-        <button class="ctrl-btn" id="chat-toggle-btn" onclick="toggleSidebar('chat')" title="Chat">
-          <svg width="18" height="18"><use href="#ic-chat"/></svg>
-        </button>
-        <span class="ctrl-label">Chat</span>
-      </div>
-      <div class="ctrl-btn-wrap">
-        <button class="ctrl-btn" id="people-toggle-btn" onclick="toggleSidebar('people')" title="Participants">
-          <svg width="18" height="18"><use href="#ic-people"/></svg>
-        </button>
-        <span class="ctrl-label">People</span>
-      </div>
+    <div class="ctrl-divider" aria-hidden="true"></div>
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn" id="screen-btn" onclick="toggleScreenShare()" aria-label="Toggle screen share"></button>
+      <div class="ctrl-label" aria-hidden="true" id="screen-label">Share</div>
+    </div>
+    <div class="ctrl-divider" aria-hidden="true"></div>
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn" id="chat-toggle-btn" onclick="toggleChat()" aria-label="Toggle chat"></button>
+      <span class="unread-badge" id="unread-badge" aria-hidden="true"></span>
+      <div class="ctrl-label" aria-hidden="true">Chat</div>
+    </div>
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn" id="participants-btn" onclick="toggleParticipants()" aria-label="Toggle participant list"></button>
+      <div class="ctrl-label" aria-hidden="true">People</div>
+    </div>
+    <div class="ctrl-divider" aria-hidden="true"></div>
+    <div class="ctrl-wrap">
+      <button class="ctrl-btn danger" onclick="leaveRoom()" aria-label="Leave meeting"></button>
+      <div class="ctrl-label" aria-hidden="true">Leave</div>
     </div>
   </div>
+</main>
 
+<div class="reconnecting-overlay" id="reconnecting-overlay" aria-live="assertive">
+  <div class="spinner-lg"></div>
+  <span>Reconnecting…</span>
 </div>
 
-<div id="toast"></div>
-
-<!-- Tour Modal -->
-<div id="tour-modal" class="tour-modal hidden">
-  <div class="tour-overlay" onclick="endTour()"></div>
-  <div class="tour-card">
-    <button class="tour-close" onclick="endTour()">
-      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-        <line x1="18" y1="6" x2="6" y2="18"></line>
-        <line x1="6" y1="6" x2="18" y2="18"></line>
-      </svg>
-    </button>
-    
-    <div class="tour-content">
-      <div class="tour-step" id="tour-step-0">
-        <div class="tour-icon" style="background: var(--amber);">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2">
-            <path d="M15 10l4.553-2.069A1 1 0 0121 8.868v6.264a1 1 0 01-1.447.901L15 14"/>
-            <rect x="3" y="7" width="12" height="10" rx="2"/>
-          </svg>
-        </div>
-        <h3>Welcome to MeetKit</h3>
-        <p>Join video meetings instantly. No downloads, no sign-ups required.</p>
-        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">Let's learn how to join a meeting →</p>
-      </div>
-
-      <div class="tour-step hidden" id="tour-step-1">
-        <div class="tour-icon" style="background: rgba(106,170,122,0.2); color: var(--green);">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M3 12a9 9 0 010-18 9 9 0 0110 16.5"/>
-            <path d="M9 12h6M9 16h4"/>
-          </svg>
-        </div>
-        <h3>Step 1: Room Name</h3>
-        <p>Enter the room name that the meeting organizer gave you. For example: "design-review" or "team-sync"</p>
-        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">Room names are shared and can't be private.</p>
-      </div>
-
-      <div class="tour-step hidden" id="tour-step-2">
-        <div class="tour-icon" style="background: rgba(184,160,136,0.2); color: var(--sand);">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-          </svg>
-        </div>
-        <h3>Step 2: Your Display Name</h3>
-        <p>Enter your name so others can see who you are. This appears next to your video and in the participants list.</p>
-        <div style="background: rgba(201,147,90,0.1); border-left: 3px solid var(--amber); padding: 0.8rem; border-radius: 4px; margin-top: 0.8rem;">
-          <p style="font-size: 0.8rem; color: var(--amber); font-weight: 500; margin: 0;">⭐ Important for Room Creators:</p>
-          <p style="font-size: 0.8rem; color: var(--tx-2); margin: 0.4rem 0 0;">If you created this room, enter the exact SAME display name you used when creating it. This makes you the admin so you can remove unwanted participants.</p>
-        </div>
-      </div>
-
-      <div class="tour-step hidden" id="tour-step-3">
-        <div class="tour-icon" style="background: rgba(186,61,100,0.15); color: #ca3d64;">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polyline points="23 6 13.5 15.5 8 9.5 1 16"></polyline>
-            <polyline points="17 6 23 6 23 12"></polyline>
-          </svg>
-        </div>
-        <h3>Step 3: Join Room</h3>
-        <p>Click "Join Room" to connect. Our system will ask for camera and microphone permissions (optional, you can skip them).</p>
-        <p style="font-size: 0.8rem; color: var(--tx-3); margin-top: 0.5rem;">You can adjust audio/video settings once you're in the room.</p>
-      </div>
-
-      <div class="tour-step hidden" id="tour-step-4">
-        <div class="tour-icon" style="background: rgba(201,147,90,0.2); color: var(--amber);">
-          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <polyline points="12 6 12 12 16 14"/>
-          </svg>
-        </div>
-        <h3>Admin Controls</h3>
-        <p>If you're the room creator and joined with your creation name, you'll see a "ADMIN" badge and "Remove" buttons next to other participants.</p>
-        <div style="background: rgba(201,147,90,0.1); border-left: 3px solid var(--amber); padding: 0.8rem; border-radius: 4px; margin-top: 0.8rem;">
-          <p style="font-size: 0.8rem; color: var(--amber); font-weight: 500; margin: 0;">🛡️ What You Can Do as Admin:</p>
-          <p style="font-size: 0.8rem; color: var(--tx-2); margin: 0.4rem 0 0;">• Remove unwanted participants by clicking "Remove" next to their name<br/>• Control who participates in your meeting<br/>• Ensure a secure and professional environment</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="tour-nav">
-      <button class="tour-btn-prev" id="tour-prev" onclick="tourPrevStep()" disabled>← Previous</button>
-      <div class="tour-counter"><span id="tour-current">1</span> / <span id="tour-total">5</span></div>
-      <button class="tour-btn-next" id="tour-next" onclick="tourNextStep()">Next →</button>
-    </div>
+<div class="shortcuts-modal" id="shortcuts-modal" onclick="toggleShortcuts()">
+  <div class="shortcuts-modal-content" onclick="event.stopPropagation()">
+    <h3>Keyboard Shortcuts</h3>
+    <div class="shortcut-row"><span>Toggle microphone</span><kbd>M</kbd></div>
+    <div class="shortcut-row"><span>Toggle camera</span><kbd>V</kbd></div>
+    <div class="shortcut-row"><span>Toggle screen share</span><kbd>S</kbd></div>
+    <div class="shortcut-row"><span>Toggle chat</span><kbd>C</kbd></div>
+    <div class="shortcut-row"><span>Toggle participants</span><kbd>P</kbd></div>
+    <div class="shortcut-row"><span>Copy meeting link</span><kbd>I</kbd></div>
+    <div class="shortcut-row"><span>Show shortcuts</span><kbd>?</kbd></div>
+    <div class="shortcut-row"><span>Leave meeting</span><kbd>Esc</kbd></div>
   </div>
 </div>
 
+<div id="toast" role="status" aria-live="polite"></div>
+
+<!-- ── JAVASCRIPT ────────────────────────────── -->
 <script>
-/* ════════════════════════════════════════════
-   STATE
-════════════════════════════════════════════ */
-let lkRoom = null, micEnabled = true, camEnabled = true;
-let isJoiningRoom = false; // Prevent double-join attempts
-let isRoomAdmin = false; // Track if current user is admin
-let adminIdentity = null; // Store admin identity for authorization
-let localUserIdentity = null; // Store our own identity
-const tiles = {}, participantNames = {};
-const textEncoder = new TextEncoder(), textDecoder = new TextDecoder();
-let localDisplayName = '', sidebarOpen = false, activeTab = 'chat';
-let callStartTime = null, clockInterval = null;
-
-/* ════════════════════════════════════════════
-   LOGGER
-════════════════════════════════════════════ */
-const logger = {
-  info: (msg, ...args) => console.log(`[INFO] ${msg}`, ...args),
-  debug: (msg, ...args) => console.log(`[DEBUG] ${msg}`, ...args),
-  warn: (msg, ...args) => console.warn(`[WARN] ${msg}`, ...args),
-  error: (msg, ...args) => console.error(`[ERROR] ${msg}`, ...args),
+/* ══════════════════════════════════════════════
+   SVG ICONS
+══════════════════════════════════════════════ */
+const ICONS = {
+  micOn:    '<svg viewBox="0 0 24 24"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/><path d="M8 22h8"/></svg>',
+  micOff:   '<svg viewBox="0 0 24 24"><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V5a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2c0 .76-.13 1.5-.35 2.18"/><path d="M12 19v3M8 22h8"/></svg>',
+  videoOn:  '<svg viewBox="0 0 24 24"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+  videoOff: '<svg viewBox="0 0 24 24"><path d="M16 16v1a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2h2m5.66 0H14a2 2 0 0 1 2 2v3.34l1 1L23 7v10"/><line x1="1" y1="1" x2="23" y2="23"/></svg>',
+  monitor:  '<svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>',
+  chat:     '<svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>',
+  users:    '<svg viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>',
+  phoneOff: '<svg viewBox="0 0 24 24"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.42 19.42 0 0 1-3.33-2.67m-2.67-3.34a19.79 19.79 0 0 1-3.07-8.63A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91"/><line x1="23" y1="1" x2="1" y2="23"/></svg>',
+  x:        '<svg viewBox="0 0 24 24"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+  volumeX:  '<svg viewBox="0 0 24 24"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><line x1="23" y1="9" x2="17" y2="15"/><line x1="17" y1="9" x2="23" y2="15"/></svg>',
 };
 
-/* ════════════════════════════════════════════
-   UTILITIES
-════════════════════════════════════════════ */
-function showToast(msg, dur = 2800) {
-  const t = document.getElementById('toast');
-  t.textContent = msg; t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), dur);
-}
-function showError(msg) { const el = document.getElementById('error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function hideError() { document.getElementById('error-msg').style.display = 'none'; }
-function showCreateError(msg) { const el = document.getElementById('create-error-msg'); el.textContent = msg; el.style.display = 'block'; }
-function hideCreateError() { document.getElementById('create-error-msg').style.display = 'none'; }
-function setJoinLoading(v) { const btn = document.getElementById('join-btn'); btn.classList.toggle('loading', v); btn.disabled = v; }
-function setCreateLoading(v) { const btn = document.getElementById('create-btn'); btn.classList.toggle('loading', v); btn.disabled = v; }
-function getInitials(name = '?') { return name.trim().split(/\s+/).map(w => w[0]).join('').toUpperCase().slice(0, 2) || '?'; }
-function escapeHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+/* ══════════════════════════════════════════════
+   STATE
+══════════════════════════════════════════════ */
+let lkRoom = null;
+let micEnabled = true;
+let camEnabled = true;
+let screenSharing = false;
+let isAdmin = false;
+let adminIdentity = null;
+let adminSecret = null;
+let currentMeetingCode = null;
+const tiles = {};
+const audioElements = {};
+const participantNames = {};
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+let localDisplayName = '';
+let pjStream = null;
+let pjMicOn = true;
+let pjCamOn = true;
+let chatOpen = false;
+let unreadCount = 0;
+let participantsOpen = false;
+let meetingStartTime = null;
+let timerInterval = null;
+let audioCtx = null;
+let gridObserver = null;
 
-/* ════════════════════════════════════════════
-   LOBBY MODE MANAGEMENT
-════════════════════════════════════════════ */
-function switchMode(mode) {
-  const joinTab = document.getElementById('mode-join-tab');
-  const createTab = document.getElementById('mode-create-tab');
-  const joinContent = document.getElementById('mode-join');
-  const createContent = document.getElementById('mode-create');
-  
-  if (mode === 'join') {
-    joinTab.classList.add('active');
-    createTab.classList.remove('active');
-    joinContent.classList.add('active');
-    createContent.classList.remove('active');
-  } else {
-    joinTab.classList.remove('active');
-    createTab.classList.add('active');
-    joinContent.classList.remove('active');
-    createContent.classList.add('active');
+/* ══════════════════════════════════════════════
+   HELPERS
+══════════════════════════════════════════════ */
+const $ = id => document.getElementById(id);
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function showToast(msg, ms = 2600) {
+  const t = $('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), ms);
+}
+
+function showError(msg) { const el = $('error-msg'); el.textContent = msg; el.style.display = 'block'; }
+function hideError() { $('error-msg').style.display = 'none'; }
+
+function setJoinLoading(on) {
+  const btn = $('join-btn');
+  btn.classList.toggle('loading', on);
+  btn.disabled = on;
+}
+
+function getInitials(name = '?') {
+  return (name || '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0,2) || '?';
+}
+
+function fmtTime(d) { return new Date(d).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); }
+
+function fmtDuration(ms) {
+  const s = Math.floor(ms / 1000);
+  const h = Math.floor(s / 3600);
+  const m = Math.floor((s % 3600) / 60);
+  const sec = s % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+  return `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
+}
+
+/* ══════════════════════════════════════════════
+   AUDIO NOTIFICATIONS
+══════════════════════════════════════════════ */
+function getAudioContext() {
+  if (!audioCtx) { try { audioCtx = new (window.AudioContext || window.webkitAudioContext)(); } catch(e) {} }
+  return audioCtx;
+}
+function playTone(freq, duration, type = 'sine') {
+  const ctx = getAudioContext(); if (!ctx) return;
+  try {
+    const osc = ctx.createOscillator(), gain = ctx.createGain();
+    osc.type = type; osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.08, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + duration);
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + duration);
+  } catch(e) {}
+}
+function playJoinSound() { playTone(880,.15); setTimeout(()=>playTone(1100,.12),100); }
+function playLeaveSound() { playTone(660,.15); setTimeout(()=>playTone(440,.12),100); }
+function playMessageSound() { playTone(1200,.08); }
+
+/* ══════════════════════════════════════════════
+   MEETING TIMER
+══════════════════════════════════════════════ */
+function startMeetingTimer() {
+  meetingStartTime = Date.now();
+  timerInterval = setInterval(() => { $('meeting-timer').textContent = fmtDuration(Date.now() - meetingStartTime); }, 1000);
+}
+function stopMeetingTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval = null;
+  $('meeting-timer').textContent = '00:00';
+}
+
+/* ══════════════════════════════════════════════
+   GRID LAYOUT
+══════════════════════════════════════════════ */
+function applyGridColumns() {
+  const grid = $('video-grid');
+  const allTiles = grid.querySelectorAll('.participant-tile');
+  const allKeys = Object.keys(tiles);
+  const count = allKeys.length;
+
+  $('empty-room-msg').style.display = count === 0 ? 'flex' : 'none';
+  if (!count) { allTiles.forEach(t => { t.style.width = ''; t.style.height = ''; }); return; }
+
+  const screenTiles = grid.querySelectorAll('.screen-share-tile');
+  const camTiles = Array.from(allTiles).filter(t => !t.classList.contains('screen-share-tile'));
+  const hasScreen = screenTiles.length > 0;
+  const cc = camTiles.length || 1;
+  const GAP = 6;
+
+  const W = grid.clientWidth;
+  const H = grid.clientHeight;
+  const isMobile = W < 481;
+
+  /* ── SCREEN SHARE MODE ───────────────────── */
+  if (hasScreen) {
+    const screenH = Math.floor(H * 0.7);
+    const camStripH = H - screenH - GAP;
+    screenTiles.forEach(t => { t.style.width = W + 'px'; t.style.height = screenH + 'px'; });
+    const camW = Math.floor(Math.min((W - GAP * (cc - 1)) / cc, camStripH * 16 / 9));
+    camTiles.forEach(t => { t.style.width = camW + 'px'; t.style.height = ''; });
+    return;
   }
-}
 
-/* ════════════════════════════════════════════
-   PLATFORM TOUR - JOINING FUNCTIONALITY
-════════════════════════════════════════════ */
-let currentTourStep = 0;
-const totalTourSteps = 5;
-
-function startTour() {
-  currentTourStep = 0;
-  updateTourDisplay();
-  document.getElementById('tour-modal').classList.remove('hidden');
-  switchMode('join'); // Show join mode
-  logger.info("Platform tour started");
-}
-
-function endTour() {
-  document.getElementById('tour-modal').classList.add('hidden');
-  currentTourStep = 0;
-  logger.info("Platform tour ended");
-}
-
-function tourNextStep() {
-  if (currentTourStep < totalTourSteps - 1) {
-    currentTourStep++;
-    updateTourDisplay();
-  }
-}
-
-function tourPrevStep() {
-  if (currentTourStep > 0) {
-    currentTourStep--;
-    updateTourDisplay();
-  }
-}
-
-function updateTourDisplay() {
-  // Hide all steps
-  for (let i = 0; i < totalTourSteps; i++) {
-    const step = document.getElementById(`tour-step-${i}`);
-    if (step) step.classList.add('hidden');
-  }
-  
-  // Show current step
-  const currentStep = document.getElementById(`tour-step-${currentTourStep}`);
-  if (currentStep) currentStep.classList.remove('hidden');
-  
-  // Update counter
-  document.getElementById('tour-current').textContent = currentTourStep + 1;
-  
-  // Update button states
-  const prevBtn = document.getElementById('tour-prev');
-  const nextBtn = document.getElementById('tour-next');
-  
-  if (prevBtn) prevBtn.disabled = currentTourStep === 0;
-  if (nextBtn) nextBtn.disabled = currentTourStep === totalTourSteps - 1;
-  
-  // Update button text on last step
-  if (nextBtn) {
-    nextBtn.textContent = currentTourStep === totalTourSteps - 2 ? 'Finish →' : 'Next →';
-    if (currentTourStep === totalTourSteps - 1) {
-      nextBtn.onclick = endTour;
-      nextBtn.textContent = 'Close';
-      nextBtn.disabled = false;
+  /* ── MOBILE: vertical stack, 2 per row, scrollable ── */
+  if (isMobile) {
+    if (cc === 1) {
+      const tw = Math.min(W, 400);
+      camTiles[0].style.width = tw + 'px'; camTiles[0].style.height = '';
     } else {
-      nextBtn.onclick = tourNextStep;
+      const tw = Math.floor((W - GAP) / 2);
+      camTiles.forEach(t => { t.style.width = tw + 'px'; t.style.height = ''; });
     }
+    return;
   }
-}
 
-async function createRoom() {
-  hideCreateError();
-  const creatorName = document.getElementById('create-name-input').value.trim();
-  const roomName = document.getElementById('create-room-input').value.trim();
-  
-  if (!creatorName) { showCreateError('Please enter your display name.'); return; }
-  if (!roomName) { showCreateError('Please enter a room name.'); return; }
-  
-  setCreateLoading(true);
-  try {
-    const res = await fetch('/create-room', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ 
-        room_name: roomName,
-        creator_name: creatorName  // NEW: Send creator's name so they become admin on join
-      })
-    });
-    
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.detail || 'Failed to create room');
-    }
-    
-    const data = await res.json();
-    window.createdRoomData = data;
-    
-    // Display the created room info
-    document.getElementById('created-room-name').textContent = data.room_name;
-    document.getElementById('created-room-code').textContent = data.meeting_code;
-    document.getElementById('meeting-url-display').value = data.meeting_url;
-    document.getElementById('room-created-info').style.display = 'block';
-    
-    showToast(`Room created! Share the link with others.`);
-    logger.info("Room created: %s (%s) by %s", data.room_name, data.meeting_code, creatorName);
-  } catch (err) {
-    console.error(err);
-    showCreateError(err.message || 'Could not create room. Check server logs.');
-  } finally {
-    setCreateLoading(false);
+  /* ── DESKTOP: fit all tiles on screen, no scrolling ── */
+  if (W <= 0 || H <= 0) return;
+
+  /*
+   * Try every possible column count (1..min(cc,4)).
+   * For each, compute the tile width that lets all rows fit.
+   * Pick whichever column count gives the largest tiles.
+   * This handles 1,2,3,4,5,6,7,8,9+ participants perfectly.
+   */
+  let bestCols = 1, bestTileW = 0;
+  for (let c = 1; c <= Math.min(cc, 4); c++) {
+    const r = Math.ceil(cc / c);
+    const maxW = (W - GAP * (c - 1)) / c;
+    const maxH = (H - GAP * (r - 1)) / r;
+    /* width from height constraint (16:9) */
+    const wFromH = maxH * (16 / 9);
+    const tileW = Math.min(maxW, wFromH);
+    if (tileW > bestTileW) { bestTileW = tileW; bestCols = c; }
   }
-}
 
-function copyMeetingUrl() {
-  const input = document.getElementById('meeting-url-display');
-  input.select();
-  document.execCommand('copy');
-  showToast('Meeting link copied to clipboard!');
-}
+  /* Cap at 960px for single-person, 800px for 2 */
+  const maxCap = cc <= 1 ? 960 : cc <= 2 ? 800 : 9999;
+  const tileW = Math.floor(Math.min(bestTileW, maxCap));
 
-async function joinCreatedRoom() {
-  if (!window.createdRoomData) return;
-  const roomName = window.createdRoomData.room_name;
-  const meeting_code = window.createdRoomData.meeting_code;
-  const room_id = window.createdRoomData.room_id;
-  
-  // Store meeting code data for use during join
-  window.meetingCodeData = {
-    meeting_code: meeting_code,
-    room_name: roomName,
-    room_id: room_id
-  };
-  
-  // Switch to join mode and pre-fill with creator's name
-  switchMode('join');
-  document.getElementById('room-input').value = roomName;
-  // Pre-fill with creator name so they join as creator and become admin
-  const createdRoomCreatorName = document.getElementById('create-name-input').value.trim();
-  if (createdRoomCreatorName) {
-    document.getElementById('name-input').value = createdRoomCreatorName;
-  }
-  document.getElementById('name-input').focus();
-  showToast('Press Enter or click Join to join your room');
-}
-
-/* ════════════════════════════════════════════
-   URL PARAMETER HANDLING & ROOM LOOKUP
-════════════════════════════════════════════ */
-function getMeetingCode() {
-  // Check if url has meeting code: /join/abc-def-ghi
-  const pathParts = window.location.pathname.split('/');
-  if (pathParts[1] === 'join' && pathParts[2]) {
-    return pathParts[2];
-  }
-  return null;
-}
-
-async function lookupRoomByCode(meetingCode) {
-  try {
-    logger.info("Looking up room for code: %s", meetingCode);
-    const res = await fetch(`/lookup-room?meeting_code=${encodeURIComponent(meetingCode)}`);
-    
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({}));
-      throw new Error(e.detail || 'Meeting code not found');
-    }
-    
-    const roomData = await res.json();
-    logger.debug("Room lookup successful: %s", roomData.room_name);
-    return roomData;
-  } catch (err) {
-    logger.error("Room lookup failed: %s", err.message);
-    throw err;
-  }
-}
-
-async function handleMeetingCodeUrl() {
-  const meetingCode = getMeetingCode();
-  if (!meetingCode) return;
-  
-  try {
-    logger.info("Meeting code detected in URL: %s", meetingCode);
-    // Look up the room details
-    const roomData = await lookupRoomByCode(meetingCode);
-    
-    // Store for use during join
-    window.meetingCodeData = {
-      meeting_code: meetingCode,
-      room_name: roomData.room_name,
-      room_id: roomData.room_id
-    };
-    
-    // Update UI to show join screen
-    switchMode('join');
-    document.getElementById('room-input').value = roomData.room_name;
-    document.getElementById('name-input').focus();
-    
-    // Auto-join after brief delay to ensure DOM is ready
-    setTimeout(() => {
-      showToast('Ready to join meeting. Enter your name and click Join.');
-    }, 100);
-  } catch (err) {
-    showError(`Invalid meeting link: ${err.message}`);
-    logger.error("Failed to handle meeting code: %s", err.message);
-  }
-}
-
-function startClock() {
-  callStartTime = Date.now();
-  function tick() {
-    const s = Math.floor((Date.now() - callStartTime) / 1000);
-    const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), sec = s % 60;
-    const fmt = h > 0
-      ? `${String(h).padStart(2,'0')}:${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`
-      : `${String(m).padStart(2,'0')}:${String(sec).padStart(2,'0')}`;
-    document.getElementById('room-clock').textContent = fmt;
-    document.getElementById('ctrl-clock-sub').textContent = fmt;
-  }
-  tick(); clockInterval = setInterval(tick, 1000);
-}
-
-function stopClock() {
-  if (clockInterval) { clearInterval(clockInterval); clockInterval = null; }
-  document.getElementById('room-clock').textContent = '00:00';
-  document.getElementById('ctrl-clock-sub').textContent = '00:00';
-}
-
-/* ════════════════════════════════════════════
-   GRID
-════════════════════════════════════════════ */
-function updateGridClass() {
-  const grid = document.getElementById('video-grid');
-  const count = Math.max(1, Object.keys(tiles).length);
-  grid.className = `video-grid grid-${count}`;
+  /* Apply to every camera tile — they all get the same size.
+   * Because it's flexbox with wrap + justify-content:center,
+   * the last row with fewer tiles automatically centers them. */
+  camTiles.forEach(t => {
+    t.style.width = tileW + 'px';
+    t.style.height = '';
+  });
 }
 
 function updateParticipantCount() {
   const n = lkRoom ? lkRoom.remoteParticipants.size + 1 : 1;
-  document.getElementById('p-count').textContent = n;
-  updateGridClass(); syncParticipantsList();
+  $('p-count').textContent = `${n} ${n === 1 ? 'participant' : 'participants'}`;
+  $('participants-count-pill').textContent = n;
+  applyGridColumns();
+  updateParticipantList();
 }
 
-/* ════════════════════════════════════════════
-   PARTICIPANTS LIST
-════════════════════════════════════════════ */
-function syncParticipantsList() {
-  const list = document.getElementById('participants-list');
-  list.innerHTML = '';
-  const renderRow = (sid, name, isLocal, isMuted, participantIdentity) => {
-    const row = document.createElement('div');
-    row.className = 'participant-row'; row.id = `prow-${sid}`;
-    
-    // Check if this participant is admin
-    const isAdmin = participantIdentity === adminIdentity;
-    const adminBadge = isAdmin ? '<span style="color:var(--amber);font-size:.63rem;font-weight:600;margin-left:0.3rem;background:rgba(201,147,90,0.15);padding:0.2rem 0.4rem;border-radius:3px;">ADMIN</span>' : '';
-    
-    // Kick button (only show if user is admin and target is not self)
-    const kickBtn = (isRoomAdmin && !isLocal) ? 
-      `<button onclick="kickParticipant('${escapeHtml(participantIdentity)}', '${escapeHtml(name)}')" style="background:rgba(184,96,96,0.2);border:none;color:var(--red-lt);padding:0.25rem 0.5rem;border-radius:3px;font-size:0.65rem;cursor:pointer;transition:all 0.2s;" onmouseover="this.style.background='rgba(184,96,96,0.35)'" onmouseout="this.style.background='rgba(184,96,96,0.2)'">Remove</button>`
-      : '';
-    
-    row.innerHTML = `
-      <div class="p-row-avatar">${getInitials(name)}</div>
-      <div class="p-row-info">
-        <div class="p-row-name">${escapeHtml(name)}${isLocal ? ' <span style="color:var(--amber);font-size:.63rem">(you)</span>' : ''}${adminBadge}</div>
-        <div class="p-row-status">${isLocal ? 'Host' : 'Participant'}</div>
-      </div>
-      <div class="p-row-icons" style="display:flex;align-items:center;gap:0.4rem;">
-        <svg width="13" height="13" class="${isMuted ? 'muted-red' : ''}"><use href="${isMuted ? '#ic-mic-off' : '#ic-mic-on'}"/></svg>
-        ${kickBtn}
-      </div>`;
-    list.appendChild(row);
-  };
-  if (lkRoom) {
-    renderRow(lkRoom.localParticipant.sid, localDisplayName, true, !micEnabled, lkRoom.localParticipant.identity);
-    for (const [, p] of lkRoom.remoteParticipants) {
-      let isMuted = false;
-      for (const [, pub] of p.trackPublications) { if (pub.kind === 'audio' && pub.isMuted) { isMuted = true; break; } }
-      renderRow(p.sid, p.name || p.identity, false, isMuted, p.identity);
-    }
-  }
-}
-
-/* ════════════════════════════════════════════
-   ADMIN - REMOVE PARTICIPANT
-════════════════════════════════════════════ */
-async function kickParticipant(participantIdentity, participantName) {
-  if (!isRoomAdmin || !adminIdentity) {
-    showToast('Only admin can remove participants', 'error');
-    return;
-  }
-  
-  try {
-    logger.info("Kicking participant: %s", participantName);
-    
-    // Notify the participant they're being kicked (before server removes them)
-    const notifyMessage = {
-      type: 'kick',
-      target: participantIdentity,
-      ts: new Date().toISOString()
-    };
-    try {
-      await publishReliableData(textEncoder.encode(JSON.stringify(notifyMessage)));
-    } catch (err) {
-      logger.warn("Could not send kick notification to participant: %s", err.message);
-    }
-    
-    // Call backend to remove participant
-    const res = await fetch('/remove-participant', {
-      method: 'POST',
-      headers: {'Content-Type': 'application/json'},
-      body: JSON.stringify({
-        room_name: roomName,
-        admin_identity: adminIdentity,
-        participant_identity: participantIdentity
-      })
-    });
-    
-    if (!res.ok) {
-      const e = await res.json().catch(() => ({ detail: res.statusText }));
-      throw new Error(e.detail || 'Failed to remove participant');
-    }
-    
-    logger.info("Participant removed successfully");
-    showToast(`${participantName} has been removed from the meeting`);
-    
-    // Remove from UI immediately
-    const row = document.getElementById(`prow-${participantIdentity}`);
-    if (row) row.remove();
-    
-  } catch (err) {
-    logger.error("Failed to kick participant: %s", err.message);
-    showToast(`Error: ${err.message}`, 'error');
-  }
-}
-
-/* ════════════════════════════════════════════
-   SIDEBAR
-════════════════════════════════════════════ */
-function toggleSidebar(tab = 'chat') {
-  const sidebar = document.getElementById('room-sidebar');
-  const isMobile = window.innerWidth <= 900;
-  if (sidebarOpen && activeTab === tab) {
-    sidebarOpen = false;
-    sidebar.classList.add('hidden'); sidebar.classList.remove('mobile-open');
-    document.getElementById('chat-toggle-btn').classList.remove('active-on');
-    document.getElementById('people-toggle-btn').classList.remove('active-on');
-  } else {
-    sidebarOpen = true; activeTab = tab;
-    sidebar.classList.remove('hidden');
-    if (isMobile) sidebar.classList.add('mobile-open');
-    document.getElementById('chat-toggle-btn').classList.toggle('active-on', tab === 'chat');
-    document.getElementById('people-toggle-btn').classList.toggle('active-on', tab === 'people');
-    switchTab(tab, false);
-  }
-}
-
-function switchTab(tab, alsoOpen = true) {
-  if (alsoOpen && !sidebarOpen) { toggleSidebar(tab); return; }
-  activeTab = tab;
-  document.querySelectorAll('.sidebar-tab').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.sidebar-panel').forEach(p => p.classList.remove('active'));
-  document.getElementById(`tab-${tab}`).classList.add('active');
-  document.getElementById(`panel-${tab}`).classList.add('active');
-  if (tab === 'people') syncParticipantsList();
-}
-
-/* ════════════════════════════════════════════
-   TILES
-════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   TILE MANAGEMENT
+══════════════════════════════════════════════ */
 function createTile(sid, name, isLocal = false) {
   participantNames[sid] = name;
   const tile = document.createElement('div');
-  tile.className = 'participant-tile'; tile.id = `tile-${sid}`;
+  tile.className = 'participant-tile' + (isLocal ? ' local-tile' : '');
+  tile.id = `tile-${sid}`;
+  tile.setAttribute('role', 'group');
+  tile.setAttribute('aria-label', `${escHtml(name)}${isLocal ? ' (You)' : ''}`);
+
   tile.innerHTML = `
+    <video id="vid-${sid}" autoplay playsinline ${isLocal ? 'muted' : ''}></video>
     <div class="video-off-placeholder" id="ph-${sid}">
-      <div class="avatar">${getInitials(name)}</div>
-      <span class="p-name-ph">${escapeHtml(name)}</span>
+      <div class="avatar">${escHtml(getInitials(name))}</div>
     </div>
-    <video id="vid-${sid}" autoplay playsinline style="display:none"></video>
-    <div class="tile-footer">
-      <div class="tile-name" id="name-${sid}">
-        <svg width="13" height="13" class="muted-icon" id="muted-${sid}"><use href="#ic-mic-off-sm"/></svg>
-        <span>${escapeHtml(name)}</span>
-      </div>
+    <div class="tile-name" id="name-${sid}">
+      <span>${escHtml(name)}</span>
+      <span class="muted-icon" id="muted-${sid}" style="display:none" aria-label="Muted">${ICONS.micOff}</span>
     </div>
-    ${isLocal ? '<div class="local-badge">You</div>' : ''}`;
+    ${isLocal ? '<span class="local-badge">YOU</span>' : ''}
+    <div class="tile-net-quality" id="nq-${sid}"><div class="bar"></div><div class="bar"></div><div class="bar"></div></div>
+  `;
+
   if (!isLocal) {
-    const w = document.createElement('div');
-    w.className = 'waiting-overlay'; w.id = `wait-${sid}`;
-    w.innerHTML = '<div class="pulse-ring"></div><p>Connecting…</p>';
-    tile.appendChild(w);
+    tile.innerHTML += `
+      <div class="waiting-overlay" id="wait-${sid}">
+        <div class="pulse-ring"></div>
+        <p>${escHtml(name)} joining…</p>
+      </div>`;
   }
-  document.getElementById('video-grid').appendChild(tile);
-  tiles[sid] = tile; updateGridClass();
+
+  $('video-grid').appendChild(tile);
+  tiles[sid] = tile;
+  applyGridColumns();
+  return tile;
+}
+
+function createScreenShareTile(ssid, name, isLocal) {
+  const tile = document.createElement('div');
+  tile.className = 'participant-tile screen-share-tile';
+  tile.id = `tile-${ssid}`;
+  tile.setAttribute('role', 'group');
+  tile.setAttribute('aria-label', `Screen share from ${escHtml(name)}`);
+
+  tile.innerHTML = `
+    <video id="vid-${ssid}" autoplay playsinline muted></video>
+    <div class="video-off-placeholder" id="ph-${ssid}">
+      <div class="avatar" style="background:linear-gradient(135deg,#5b73f5,#7c3aed)">${ICONS.monitor}</div>
+    </div>
+    <div class="tile-name"><span>${escHtml(name)}'s screen</span></div>
+    ${isLocal ? '<span class="local-badge">YOUR SCREEN</span>' : ''}
+  `;
+
+  const grid = $('video-grid');
+  grid.insertBefore(tile, grid.firstChild);
+  tiles[ssid] = tile;
+  applyGridColumns();
   return tile;
 }
 
 function removeTile(sid) {
-  if (tiles[sid]) { tiles[sid].remove(); delete tiles[sid]; }
-  delete participantNames[sid]; updateGridClass();
+  const t = tiles[sid];
+  if (t) t.remove();
+  delete tiles[sid];
+  if (audioElements[sid]) {
+    audioElements[sid].forEach(el => { try { el.remove(); } catch(e) {} });
+    delete audioElements[sid];
+  }
+  delete participantNames[sid];
+  applyGridColumns();
 }
 
 function attachTrack(sid, track) {
-  const vid = document.getElementById(`vid-${sid}`);
-  const ph  = document.getElementById(`ph-${sid}`);
-  const wait = document.getElementById(`wait-${sid}`);
+  const vid = $(`vid-${sid}`);
+  const wait = $(`wait-${sid}`);
+  const tile = $(`tile-${sid}`);
+
   if (track.kind === 'video') {
-    if (vid) { track.attach(vid); vid.style.display = 'block'; if (ph) ph.style.display = 'none'; if (wait) wait.style.display = 'none'; }
+    if (vid) {
+      track.attach(vid);
+      tile && tile.classList.add('has-video');
+      if (wait) wait.style.display = 'none';
+    }
   }
   if (track.kind === 'audio' && !track.isLocal) {
-    const audio = track.attach(); audio.id = `aud-${sid}-${Date.now()}`; document.body.appendChild(audio);
+    if (audioElements[sid]) {
+      audioElements[sid].forEach(el => { try { el.remove(); } catch(e) {} });
+    }
+    const audio = track.attach();
+    audio.id = `aud-${sid}`;
+    document.body.appendChild(audio);
+    audioElements[sid] = [audio];
+  }
+}
+
+function attachScreenTrack(ssid, track) {
+  const vid = $(`vid-${ssid}`);
+  const tile = $(`tile-${ssid}`);
+  if (vid && track.kind === 'video') {
+    track.attach(vid);
+    tile && tile.classList.add('has-video');
   }
 }
 
 function detachTrack(sid, track) {
+  const tile = $(`tile-${sid}`);
   if (track.kind === 'video') {
-    const vid = document.getElementById(`vid-${sid}`), ph = document.getElementById(`ph-${sid}`), wait = document.getElementById(`wait-${sid}`);
-    if (vid) { track.detach(vid); vid.style.display = 'none'; }
-    if (ph) ph.style.display = 'flex';
-    if (wait && !isParticipantPublishingVideo(sid)) wait.style.display = 'flex';
+    const vid = $(`vid-${sid}`);
+    if (vid) track.detach(vid);
+    tile && tile.classList.remove('has-video');
+    const wait = $(`wait-${sid}`);
+    if (wait && !isPublishing(sid)) wait.style.display = 'flex';
     return;
   }
-  if (track.kind === 'audio') track.detach().forEach(el => el.remove());
+  if (track.kind === 'audio') {
+    track.detach().forEach(el => el.remove());
+    delete audioElements[sid];
+  }
 }
 
-function isParticipantPublishingVideo(sid) {
+function isPublishing(sid) {
+  if (!lkRoom) return false;
   for (const [, p] of lkRoom.remoteParticipants) {
-    if (p.sid === sid) for (const [, pub] of p.trackPublications) { if (pub.isSubscribed && pub.kind === 'video') return true; }
+    if (p.sid === sid) {
+      for (const [, pub] of p.trackPublications) {
+        if (pub.isSubscribed && pub.kind === 'video') return true;
+      }
+    }
   }
   return false;
 }
 
-/* ════════════════════════════════════════════
-   DEVICE PERMISSION CHECK
-════════════════════════════════════════════ */
-async function checkDevicePermissions() {
+/* ══════════════════════════════════════════════
+   PRE-JOIN
+══════════════════════════════════════════════ */
+async function initPreview() {
   try {
-    const permissions = await navigator.permissions.query({ name: 'camera' });
-    const audioPermissions = await navigator.permissions.query({ name: 'microphone' });
-    
-    if (permissions.state === 'denied') {
-      throw new Error('Camera access is blocked. Please enable camera permissions in your browser settings.');
-    }
-    if (audioPermissions.state === 'denied') {
-      throw new Error('Microphone access is blocked. Please enable microphone permissions in your browser settings.');
-    }
-    return true;
-  } catch (err) {
-    // Browser doesn't support permissions API, continue anyway
-    logger.debug("Permissions API not available, continuing with join");
-    return true;
+    pjStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    $('pj-video').srcObject = pjStream;
+    $('pj-cam-off').style.display = 'none';
+    await populateDevices();
+  } catch (e) {
+    $('pj-cam-off').style.display = 'flex';
+    if (e.name === 'NotAllowedError') showToast('Camera/mic access denied. You can still join.');
+    else if (e.name === 'NotFoundError') showToast('No camera or microphone found.');
+    else if (e.name === 'NotReadableError') showToast('Camera/mic in use by another app.');
+    else console.warn('Preview unavailable:', e.message);
   }
 }
 
-/* ════════════════════════════════════════════
-   JOIN
-════════════════════════════════════════════ */
-async function joinRoom() {
-  // Prevent double-join attempts
-  if (isJoiningRoom) {
-    showError('Already joining a room. Please wait...');
-    return;
-  }
-  
-  hideError();
-  const roomName = document.getElementById('room-input').value.trim();
-  const userName = document.getElementById('name-input').value.trim();
-  if (!roomName) { showError('Please enter a room name.'); return; }
-  if (!userName) { showError('Please enter your display name.'); return; }
-  
-  localDisplayName = userName;
-  isJoiningRoom = true;
-  setJoinLoading(true);
-  
-  let connectionTimeout;
-  
+async function populateDevices() {
   try {
-    // Check device permissions first
-    logger.info("Checking device permissions...");
-    await checkDevicePermissions();
-    
-    // Get token
-    logger.info("Requesting access token for room: %s", roomName);
-    const tokenRequest = {
-      room_name: roomName,
-      participant_name: userName,
-      room_id: null,
-      meeting_code: null
-    };
-    
-    // If joining via meeting code link
-    if (window.meetingCodeData) {
-      tokenRequest.meeting_code = window.meetingCodeData.meeting_code;
-      tokenRequest.room_id = window.meetingCodeData.room_id;
-      logger.info("Joining via meeting code: %s", window.meetingCodeData.meeting_code);
-    }
-    
-    const res = await fetch('/token', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(tokenRequest)
-    });
-    
-    if (!res.ok) { 
-      const e = await res.json().catch(() => ({})); 
-      throw new Error(e.detail || 'Failed to get access token'); 
-    }
-    const { token, livekit_url, is_admin, admin_identity } = await res.json();
-    isRoomAdmin = is_admin || false;
-    adminIdentity = admin_identity;
-    logger.info("Token received. Admin: %s", isRoomAdmin ? "YES" : "NO");
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const camSel = $('pj-cam-select'), micSel = $('pj-mic-select');
+    camSel.innerHTML = ''; micSel.innerHTML = '';
+    devices.filter(d => d.kind === 'videoinput').forEach((d, i) => { camSel.appendChild(new Option(d.label || `Camera ${i+1}`, d.deviceId)); });
+    devices.filter(d => d.kind === 'audioinput').forEach((d, i) => { micSel.appendChild(new Option(d.label || `Mic ${i+1}`, d.deviceId)); });
+  } catch(e) {}
+}
 
-    // Create room with timeout protection
-    lkRoom = new LivekitClient.Room({ 
-      adaptiveStream: true, 
-      dynacast: true, 
-      videoCaptureDefaults: { resolution: LivekitClient.VideoPresets.h720.resolution } 
-    });
-    
+function pjToggleMic() {
+  pjMicOn = !pjMicOn;
+  if (pjStream) pjStream.getAudioTracks().forEach(t => t.enabled = pjMicOn);
+  $('pj-mic-icon').innerHTML = pjMicOn ? ICONS.micOn : ICONS.micOff;
+  $('pj-mic-label').textContent = pjMicOn ? 'Mic' : 'Muted';
+  $('pj-mic-btn').classList.toggle('off', !pjMicOn);
+}
+
+function pjToggleCam() {
+  pjCamOn = !pjCamOn;
+  if (pjStream) pjStream.getVideoTracks().forEach(t => t.enabled = pjCamOn);
+  $('pj-cam-icon').innerHTML = pjCamOn ? ICONS.videoOn : ICONS.videoOff;
+  $('pj-cam-label').textContent = pjCamOn ? 'Camera' : 'Off';
+  $('pj-cam-btn').classList.toggle('off', !pjCamOn);
+  $('pj-cam-off').style.display = pjCamOn ? 'none' : 'flex';
+}
+
+async function pjSwitchCam() {
+  const deviceId = $('pj-cam-select').value;
+  if (!deviceId || !pjStream) return;
+  try {
+    const newStream = await navigator.mediaDevices.getUserMedia({ video: { deviceId: { exact: deviceId } }, audio: false });
+    const [newTrack] = newStream.getVideoTracks();
+    const [oldTrack] = pjStream.getVideoTracks();
+    pjStream.removeTrack(oldTrack); oldTrack.stop();
+    pjStream.addTrack(newTrack);
+    $('pj-video').srcObject = pjStream;
+  } catch(e) { showToast('Camera switch failed'); }
+}
+
+function stopPreview() {
+  if (pjStream) { pjStream.getTracks().forEach(t => t.stop()); pjStream = null; }
+}
+
+/* ══════════════════════════════════════════════
+   MEETING CODE URL
+══════════════════════════════════════════════ */
+function getMeetingCodeFromUrl() { return window.__meetingCode || null; }
+
+async function lookupRoomByCode(code) {
+  const res = await fetch(`/lookup-room?meeting_code=${encodeURIComponent(code)}`);
+  if (!res.ok) return null;
+  return await res.json();
+}
+
+async function handleMeetingCodeUrl() {
+  const code = getMeetingCodeFromUrl();
+  if (!code) return;
+  currentMeetingCode = code;
+  const data = await lookupRoomByCode(code);
+  if (data) {
+    $('room-input').value = data.room_name;
+    $('room-input').readOnly = true;
+    $('room-input').style.opacity = '0.7';
+    showToast('Room found! Enter your name to join.');
+  } else { showError('Meeting link expired or invalid.'); }
+}
+
+/* ══════════════════════════════════════════════
+   JOIN
+══════════════════════════════════════════════ */
+async function joinRoom() {
+  hideError();
+  const roomName = $('room-input').value.trim();
+  const userName = $('name-input').value.trim();
+  if (!roomName) { showError('Please enter a room name.'); return; }
+  if (!userName) { showError('Please enter your name.'); return; }
+  localDisplayName = userName;
+  setJoinLoading(true);
+
+  try {
+    const tokenBody = { room_name: roomName, participant_name: userName };
+    if (currentMeetingCode) tokenBody.meeting_code = currentMeetingCode;
+    if (adminSecret) tokenBody.admin_secret = adminSecret;
+
+    const res = await fetch('/token', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(tokenBody) });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || `Server error ${res.status}`); }
+    const data = await res.json();
+
+    isAdmin = data.is_admin || false;
+    adminIdentity = data.admin_identity || null;
+
+    lkRoom = new LivekitClient.Room({ adaptiveStream: true, dynacast: true, videoCaptureDefaults: { resolution: LivekitClient.VideoPresets.h720.resolution } });
     wireRoomEvents();
-    
-    // Set connection timeout (30 seconds)
-    connectionTimeout = setTimeout(() => {
-      if (lkRoom && !lkRoom.isConnected) {
-        lkRoom.disconnect().catch(() => {});
-        lkRoom = null;
-        throw new Error('Connection timeout. Please check your network and try again.');
-      }
-    }, 30000);
-    
-    logger.info("Connecting to LiveKit server...");
-    await lkRoom.connect(livekit_url, token);
-    clearTimeout(connectionTimeout);
-    
-    if (!lkRoom) throw new Error('Connection lost unexpectedly');
-    logger.info("Connected to LiveKit, enabling devices...");
-    
-    // Try to enable camera and microphone, but don't fail if they're not available
-    try {
-      await Promise.race([
-        lkRoom.localParticipant.enableCameraAndMicrophone(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Device setup timeout')), 15000))
-      ]);
-      logger.info("Devices enabled successfully");
-    } catch (devErr) {
-      logger.warn("Device setup warning: %s", devErr.message);
-      // If device setup fails, try to recover by disabling audio/video
-      try {
-        await lkRoom.localParticipant.setCameraEnabled(false);
-        await lkRoom.localParticipant.setMicrophoneEnabled(false);
-        micEnabled = false;
-        camEnabled = false;
-        logger.warn("Continuing without audio/video due to device error: %s", devErr.message);
-        showToast('Joined without audio/video. Check device permissions.');
-      } catch (fallbackErr) {
-        // Even that failed, disconnect
-        await lkRoom.disconnect();
-        lkRoom = null;
-        throw new Error('Could not access devices. ' + devErr.message);
-      }
-    }
+    await lkRoom.connect(data.livekit_url, data.token);
 
-    // Only show room UI AFTER successful connection AND device setup/fallback
-    logger.info("Transitioning to room view...");
-    document.getElementById('lobby').style.display = 'none';
-    document.getElementById('room').style.display = 'flex';
-    document.getElementById('room-title').textContent = roomName;
-    document.getElementById('ctrl-room-name').textContent = roomName;
+    stopPreview();
+    try { await lkRoom.localParticipant.enableCameraAndMicrophone(); }
+    catch (mediaErr) { console.warn('Could not enable camera/mic:', mediaErr.message); showToast('Joined without camera/mic'); }
 
-    // Store local user identity for admin controls
-    localUserIdentity = lkRoom.localParticipant.identity;
-    logger.debug("Local identity stored: %s", localUserIdentity);
+    micEnabled = pjMicOn; camEnabled = pjCamOn;
+    if (!micEnabled) await lkRoom.localParticipant.setMicrophoneEnabled(false);
+    if (!camEnabled) await lkRoom.localParticipant.setCameraEnabled(false);
 
-    createTile(lkRoom.localParticipant.sid, userName, true);
-    const localVid = lkRoom.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera)?.videoTrack;
-    if (localVid) attachTrack(lkRoom.localParticipant.sid, localVid);
+    $('lobby').style.display = 'none';
+    $('room').style.display  = 'flex';
+    $('room-title').textContent = roomName;
+    $('chat-title').textContent = roomName;
+    $('chat-send').disabled = false;
+
+    if (currentMeetingCode) { const btn = $('meeting-code-btn'); btn.textContent = currentMeetingCode; btn.style.display = ''; }
+    if (isAdmin) { $('admin-controls').classList.add('show'); adminIdentity = lkRoom.localParticipant.identity; }
+
+    startMeetingTimer();
+
+    /* Recalculate grid on container resize */
+    if (gridObserver) gridObserver.disconnect();
+    gridObserver = new ResizeObserver(() => applyGridColumns());
+    gridObserver.observe($('video-grid'));
+
+    const lsid = lkRoom.localParticipant.sid;
+    createTile(lsid, userName, true);
+    syncLocalMedia();
 
     for (const [, p] of lkRoom.remoteParticipants) onParticipantConnected(p);
 
-    updateParticipantCount(); 
-    startClock();
-    logger.info("Successfully joined room: %s", roomName);
-    showToast('Connected to room');
-    
+    updateControlState();
+    updateParticipantCount();
+    showToast('Connected');
   } catch (err) {
-    clearTimeout(connectionTimeout);
-    logger.error("Join error: %s", err.message);
-    
-    // Clean up failed connection
-    if (lkRoom) {
-      try {
-        await lkRoom.disconnect();
-      } catch (dcErr) {
-        logger.debug("Error during cleanup disconnect: %s", dcErr.message);
+    showError(err.message || 'Could not connect.');
+    console.error(err);
+  } finally { setJoinLoading(false); }
+}
+
+function syncLocalMedia() {
+  const lsid = lkRoom.localParticipant.sid;
+  const camPub = lkRoom.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera);
+  if (camPub?.videoTrack) attachTrack(lsid, camPub.videoTrack);
+}
+
+function updateControlState() {
+  const micBtn = $('mic-btn');
+  micBtn.classList.toggle('off', !micEnabled);
+  micBtn.innerHTML = micEnabled ? ICONS.micOn : ICONS.micOff;
+  $('mic-label').textContent = micEnabled ? 'Mute' : 'Unmute';
+
+  const camBtn = $('cam-btn');
+  camBtn.classList.toggle('off', !camEnabled);
+  camBtn.innerHTML = camEnabled ? ICONS.videoOn : ICONS.videoOff;
+  $('cam-label').textContent = camEnabled ? 'Stop Video' : 'Start Video';
+
+  const screenBtn = $('screen-btn');
+  screenBtn.classList.toggle('active', screenSharing);
+  screenBtn.innerHTML = ICONS.monitor;
+  $('screen-label').textContent = screenSharing ? 'Stop Share' : 'Share';
+
+  $('chat-toggle-btn').innerHTML = ICONS.chat;
+  $('participants-btn').innerHTML = ICONS.users;
+
+  // Leave button (the danger one)
+  document.querySelector('.ctrl-btn.danger').innerHTML = ICONS.phoneOff;
+}
+
+/* ══════════════════════════════════════════════
+   ROOM EVENTS
+══════════════════════════════════════════════ */
+function wireRoomEvents() {
+  const ScreenShareSource = LivekitClient.Track.Source.ScreenShare;
+
+  lkRoom
+    .on(LivekitClient.RoomEvent.ParticipantConnected, onParticipantConnected)
+    .on(LivekitClient.RoomEvent.ParticipantDisconnected, p => {
+      removeTile(p.sid);
+      // Also remove their screen share tile if any
+      const ssid = `screen-${p.sid}`;
+      if (tiles[ssid]) removeTile(ssid);
+      updateParticipantCount();
+      addSysMsg(`${escHtml(p.name || p.identity)} left`);
+      showToast(`${p.name || p.identity} left`);
+      playLeaveSound();
+    })
+    .on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, participant) => {
+      if (pub.source === ScreenShareSource && track.kind === 'video') {
+        const ssid = `screen-${participant.sid}`;
+        if (!tiles[ssid]) createScreenShareTile(ssid, participant.name || participant.identity, false);
+        attachScreenTrack(ssid, track);
+      } else {
+        attachTrack(participant.sid, track);
       }
-      lkRoom = null;
+    })
+    .on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, pub, participant) => {
+      if (pub.source === ScreenShareSource) {
+        const ssid = `screen-${participant.sid}`;
+        if (tiles[ssid]) removeTile(ssid);
+      } else {
+        detachTrack(participant.sid, track);
+      }
+    })
+    .on(LivekitClient.RoomEvent.DataReceived, onDataReceived)
+    .on(LivekitClient.RoomEvent.LocalTrackPublished, pub => {
+      const track = pub.track || pub.videoTrack || pub.audioTrack;
+      if (!track) return;
+      if (pub.source === ScreenShareSource && track.kind === 'video') {
+        const ssid = `screen-${lkRoom.localParticipant.sid}`;
+        if (!tiles[ssid]) createScreenShareTile(ssid, localDisplayName, true);
+        attachScreenTrack(ssid, track);
+        screenSharing = true;
+        updateControlState();
+      } else if (track.kind === 'video') {
+        attachTrack(lkRoom.localParticipant.sid, track);
+      }
+    })
+    .on(LivekitClient.RoomEvent.LocalTrackUnpublished, pub => {
+      if (pub.source === ScreenShareSource) {
+        const ssid = `screen-${lkRoom.localParticipant.sid}`;
+        if (tiles[ssid]) removeTile(ssid);
+        screenSharing = false;
+        updateControlState();
+      }
+    })
+    .on(LivekitClient.RoomEvent.ActiveSpeakersChanged, speakers => {
+      document.querySelectorAll('.participant-tile').forEach(t => t.classList.remove('speaking'));
+      speakers.forEach(s => { const t = $(`tile-${s.sid}`); if (t) t.classList.add('speaking'); });
+    })
+    .on(LivekitClient.RoomEvent.TrackMuted, (pub, participant) => {
+      if (pub.kind === 'audio') { const ico = $(`muted-${participant.sid}`); if (ico) ico.style.display = 'inline-flex'; }
+      updateParticipantList();
+    })
+    .on(LivekitClient.RoomEvent.TrackUnmuted, (pub, participant) => {
+      if (pub.kind === 'audio') { const ico = $(`muted-${participant.sid}`); if (ico) ico.style.display = 'none'; }
+      updateParticipantList();
+    })
+    .on(LivekitClient.RoomEvent.ConnectionQualityChanged, (quality, participant) => {
+      updateNetworkQuality(participant.sid, quality);
+    })
+    .on(LivekitClient.RoomEvent.Reconnecting, () => { $('reconnecting-overlay').classList.add('show'); })
+    .on(LivekitClient.RoomEvent.Reconnected, () => { $('reconnecting-overlay').classList.remove('show'); showToast('Reconnected'); })
+    .on(LivekitClient.RoomEvent.Disconnected, () => { $('reconnecting-overlay').classList.remove('show'); showToast('Disconnected'); resetToLobby(); });
+}
+
+function onParticipantConnected(participant) {
+  createTile(participant.sid, participant.name || participant.identity, false);
+  updateParticipantCount();
+  addSysMsg(`${escHtml(participant.name || participant.identity)} joined`);
+  showToast(`${participant.name || participant.identity} joined`);
+  playJoinSound();
+  for (const [, pub] of participant.trackPublications) {
+    if (pub.isSubscribed && pub.track) {
+      if (pub.source === LivekitClient.Track.Source.ScreenShare && pub.track.kind === 'video') {
+        const ssid = `screen-${participant.sid}`;
+        if (!tiles[ssid]) createScreenShareTile(ssid, participant.name || participant.identity, false);
+        attachScreenTrack(ssid, pub.track);
+      } else {
+        attachTrack(participant.sid, pub.track);
+      }
     }
-    
-    // Show user-friendly error message
-    let errorMsg = err.message || 'Could not join room. Please try again.';
-    if (errorMsg.includes('Device') || errorMsg.includes('permission')) {
-      errorMsg = 'Camera/Microphone access denied. Allow permissions in browser settings and try again.';
-    } else if (errorMsg.includes('timeout')) {
-      errorMsg = 'Connection timeout. Check your internet and try again.';
-    } else if (errorMsg.includes('401') || errorMsg.includes('unauthorized')) {
-      errorMsg = 'Invalid room credentials. Contact the room organizer.';
-    }
-    showError(errorMsg);
-    
-  } finally { 
-    isJoiningRoom = false;
-    setJoinLoading(false); 
   }
 }
 
-/* ════════════════════════════════════════════
-   ROOM EVENTS
-════════════════════════════════════════════ */
-function wireRoomEvents() {
-  lkRoom
-    .on(LivekitClient.RoomEvent.ParticipantConnected, onParticipantConnected)
-    .on(LivekitClient.RoomEvent.ParticipantDisconnected, onParticipantDisconnected)
-    .on(LivekitClient.RoomEvent.TrackSubscribed, (track, pub, p) => attachTrack(p.sid, track))
-    .on(LivekitClient.RoomEvent.TrackUnsubscribed, (track, pub, p) => detachTrack(p.sid, track))
-    .on(LivekitClient.RoomEvent.DataReceived, onDataReceived)
-    .on(LivekitClient.RoomEvent.LocalTrackPublished, (pub) => { if (pub.kind === 'video' && pub.videoTrack) attachTrack(lkRoom.localParticipant.sid, pub.videoTrack); })
-    .on(LivekitClient.RoomEvent.ActiveSpeakersChanged, onSpeakersChanged)
-    .on(LivekitClient.RoomEvent.TrackMuted, (pub, p) => { const i = document.getElementById(`muted-${p.sid}`); if (i && pub.kind === 'audio') i.style.display = 'inline'; syncParticipantsList(); })
-    .on(LivekitClient.RoomEvent.TrackUnmuted, (pub, p) => { const i = document.getElementById(`muted-${p.sid}`); if (i && pub.kind === 'audio') i.style.display = 'none'; syncParticipantsList(); })
-    .on(LivekitClient.RoomEvent.Disconnected, () => { showToast('Disconnected'); resetToLobby(); });
+/* ══════════════════════════════════════════════
+   NETWORK QUALITY
+══════════════════════════════════════════════ */
+function updateNetworkQuality(sid, quality) {
+  const nq = $(`nq-${sid}`);
+  if (!nq) return;
+  const CQ = LivekitClient.ConnectionQuality;
+  nq.classList.remove('good','fair','poor');
+  if (quality === CQ.Excellent || quality === CQ.Good) nq.classList.add('good');
+  else if (quality === CQ.Fair) nq.classList.add('fair');
+  else nq.classList.add('poor');
+
+  if (lkRoom && sid === lkRoom.localParticipant.sid) {
+    const h = $('net-quality');
+    h.classList.remove('good','fair','poor');
+    if (quality === CQ.Excellent || quality === CQ.Good) h.classList.add('good');
+    else if (quality === CQ.Fair) h.classList.add('fair');
+    else h.classList.add('poor');
+  }
 }
 
-function onParticipantConnected(p) {
-  createTile(p.sid, p.name || p.identity, false); updateParticipantCount();
-  showToast(`${p.name || p.identity} joined`);
-  for (const [, pub] of p.trackPublications) { if (pub.isSubscribed && pub.track) attachTrack(p.sid, pub.track); }
-}
-
-function onParticipantDisconnected(p) { removeTile(p.sid); updateParticipantCount(); showToast(`${p.name || p.identity} left`); }
-
-function onSpeakersChanged(speakers) {
-  document.querySelectorAll('.participant-tile').forEach(t => t.classList.remove('speaking'));
-  for (const s of speakers) { const t = document.getElementById(`tile-${s.sid}`); if (t) t.classList.add('speaking'); }
-}
-
-/* ════════════════════════════════════════════
-   CHAT
-════════════════════════════════════════════ */
-function appendChatMessage({ sender, text, isSelf = false, timestamp = new Date() }) {
-  const list = document.getElementById('chat-messages');
-  const empty = document.getElementById('chat-empty');
-  if (empty) empty.style.display = 'none';
-  const time = new Date(timestamp);
-  const row = document.createElement('div');
-  row.className = `chat-msg${isSelf ? ' self' : ''}`;
-  row.innerHTML = `
-    <div class="chat-meta"><span class="sender">${escapeHtml(sender)}</span><span>${String(time.getHours()).padStart(2,'0')}:${String(time.getMinutes()).padStart(2,'0')}</span></div>
-    <div class="chat-msg-bubble"><div class="chat-text"></div></div>`;
-  row.querySelector('.chat-text').textContent = text;
-  list.appendChild(row); list.scrollTop = list.scrollHeight;
-  if (!sidebarOpen || activeTab !== 'chat') { const b = document.getElementById('chat-toggle-btn'); b.style.boxShadow = '0 0 0 2px var(--amber)'; setTimeout(() => b.style.boxShadow = '', 3000); }
-}
-
-function onDataReceived(payload, participant) {
-  try {
-    const parsed = JSON.parse(textDecoder.decode(payload));
-    if (!parsed) return;
-    
-    // Handle kick notification
-    if (parsed.type === 'kick' && parsed.target === lkRoom.localParticipant.identity) {
-      logger.warn("User was kicked from the room");
-      showToast('You were removed from the meeting by the admin', 'warning');
-      setTimeout(async () => {
-        await lkRoom.disconnect();
-        resetToLobby();
-      }, 500);
-      return;
-    }
-    
-    // Handle chat messages
-    if (parsed.type !== 'chat' || !parsed.text) return;
-    appendChatMessage({ sender: parsed.sender || participant?.name || participant?.identity || 'Participant', text: String(parsed.text), isSelf: false, timestamp: parsed.ts || new Date() });
-  } catch (_) {}
-}
-
-async function publishReliableData(data) {
-  try { await lkRoom.localParticipant.publishData(data, { reliable: true }); }
-  catch (err) { const k = LivekitClient.DataPacket_Kind?.RELIABLE; if (k === undefined) throw err; await lkRoom.localParticipant.publishData(data, k); }
-}
-
-async function sendChatMessage() {
-  if (!lkRoom) return;
-  const input = document.getElementById('chat-input');
-  const text = input.value.trim();
-  if (!text) return;
-  const msg = { type: 'chat', text, sender: localDisplayName || lkRoom.localParticipant.name || 'You', ts: new Date().toISOString() };
-  try {
-    await publishReliableData(textEncoder.encode(JSON.stringify(msg)));
-    appendChatMessage({ sender: msg.sender, text: msg.text, isSelf: true, timestamp: msg.ts });
-    input.value = ''; autoResize(input); input.focus();
-  } catch (_) { showToast('Could not send message'); }
-}
-
-function autoResize(el) { el.style.height = 'auto'; el.style.height = Math.min(el.scrollHeight, 100) + 'px'; }
-
-/* ════════════════════════════════════════════
-   CONTROLS
-════════════════════════════════════════════ */
+/* ══════════════════════════════════════════════
+   MEDIA CONTROLS
+══════════════════════════════════════════════ */
 async function toggleMic() {
   if (!lkRoom) return;
   micEnabled = !micEnabled;
   await lkRoom.localParticipant.setMicrophoneEnabled(micEnabled);
-  document.getElementById('mic-btn').classList.toggle('off', !micEnabled);
-  document.getElementById('mic-icon').setAttribute('href', micEnabled ? '#ic-mic-on' : '#ic-mic-off');
-  document.getElementById('mic-label').textContent = micEnabled ? 'Mute' : 'Unmute';
-  const mi = document.getElementById(`muted-${lkRoom.localParticipant.sid}`);
-  if (mi) mi.style.display = micEnabled ? 'none' : 'inline';
-  syncParticipantsList();
-  showToast(micEnabled ? 'Microphone on' : 'Microphone muted');
+  const ico = $(`muted-${lkRoom.localParticipant.sid}`);
+  if (ico) ico.style.display = micEnabled ? 'none' : 'inline-flex';
+  updateControlState();
+  updateParticipantList();
+  showToast(micEnabled ? 'Microphone on' : 'Microphone off');
 }
 
 async function toggleCam() {
   if (!lkRoom) return;
   camEnabled = !camEnabled;
   await lkRoom.localParticipant.setCameraEnabled(camEnabled);
-  document.getElementById('cam-btn').classList.toggle('off', !camEnabled);
-  document.getElementById('cam-icon').setAttribute('href', camEnabled ? '#ic-cam-on' : '#ic-cam-off');
-  document.getElementById('cam-label').textContent = camEnabled ? 'Camera' : 'Cam Off';
-  const vid = document.getElementById(`vid-${lkRoom.localParticipant.sid}`);
-  const ph  = document.getElementById(`ph-${lkRoom.localParticipant.sid}`);
-  if (!camEnabled) { if (vid) vid.style.display = 'none'; if (ph) ph.style.display = 'flex'; }
-  else { const lv = lkRoom.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera)?.videoTrack; if (lv && vid) { lv.attach(vid); vid.style.display = 'block'; if (ph) ph.style.display = 'none'; } }
+  if (camEnabled) {
+    const camPub = lkRoom.localParticipant.getTrackPublication(LivekitClient.Track.Source.Camera);
+    if (camPub?.videoTrack) attachTrack(lkRoom.localParticipant.sid, camPub.videoTrack);
+  } else {
+    $(`tile-${lkRoom.localParticipant.sid}`)?.classList.remove('has-video');
+  }
+  updateControlState();
+  updateParticipantList();
   showToast(camEnabled ? 'Camera on' : 'Camera off');
 }
 
-/* ════════════════════════════════════════════
-   LEAVE
-════════════════════════════════════════════ */
-async function leaveRoom() { 
-  if (lkRoom) { 
+/* ══════════════════════════════════════════════
+   SCREEN SHARING
+══════════════════════════════════════════════ */
+async function toggleScreenShare() {
+  if (!lkRoom) return;
+  if (screenSharing) {
     try {
-      logger.info("Disconnecting from room...");
-      await lkRoom.disconnect(); 
-      lkRoom = null;
-      logger.info("Disconnected successfully");
-    } catch (err) {
-      logger.error("Error during disconnect: %s", err.message);
-      lkRoom = null;
+      await lkRoom.localParticipant.setScreenShareEnabled(false);
+      // LocalTrackUnpublished event handles tile removal and state reset
+    } catch (e) { console.warn('Failed to stop screen share:', e); }
+  } else {
+    try {
+      await lkRoom.localParticipant.setScreenShareEnabled(true);
+      // LocalTrackPublished event handles tile creation and state update
+      showToast('Screen sharing started');
+    } catch (e) {
+      if (e.name === 'NotAllowedError') showToast('Screen share cancelled');
+      else { showToast('Screen share failed'); console.warn('Screen share failed:', e); }
     }
-  } 
-  resetToLobby(); 
+  }
+}
+
+/* ══════════════════════════════════════════════
+   LEAVE
+══════════════════════════════════════════════ */
+async function leaveRoom() {
+  if (lkRoom) { lkRoom.removeAllListeners(); await lkRoom.disconnect(); lkRoom = null; }
+  resetToLobby();
 }
 
 function resetToLobby() {
-  stopClock();
-  document.getElementById('video-grid').innerHTML = '';
+  $('video-grid').innerHTML = '';
   Object.keys(tiles).forEach(k => delete tiles[k]);
+  Object.keys(audioElements).forEach(k => { audioElements[k].forEach(el => { try { el.remove(); } catch(e) {} }); delete audioElements[k]; });
   Object.keys(participantNames).forEach(k => delete participantNames[k]);
-  document.getElementById('participants-list').innerHTML = '';
-  document.getElementById('chat-messages').innerHTML = '<div class="chat-empty" id="chat-empty">No messages yet.<br>Say hello to the room.</div>';
-  document.getElementById('chat-input').value = '';
-  sidebarOpen = false;
-  const sb = document.getElementById('room-sidebar');
-  sb.classList.add('hidden'); sb.classList.remove('mobile-open');
-  document.getElementById('chat-toggle-btn').classList.remove('active-on');
-  document.getElementById('people-toggle-btn').classList.remove('active-on');
-  document.getElementById('chat-toggle-btn').style.boxShadow = '';
-  micEnabled = true; camEnabled = true; localDisplayName = '';
-  document.getElementById('mic-btn').classList.remove('off');
-  document.getElementById('mic-icon').setAttribute('href', '#ic-mic-on');
-  document.getElementById('mic-label').textContent = 'Mute';
-  document.getElementById('cam-btn').classList.remove('off');
-  document.getElementById('cam-icon').setAttribute('href', '#ic-cam-on');
-  document.getElementById('cam-label').textContent = 'Camera';
-  document.getElementById('room').style.display = 'none';
-  document.getElementById('lobby').style.display = 'flex';
-  hideError();
+  $('chat-messages').innerHTML = '<div class="chat-empty" id="chat-empty">No messages yet.<br>Say hello to the room.</div>';
+  $('chat-input').value = '';
+  $('chat-send').disabled = true;
+  chatOpen = false; unreadCount = 0; participantsOpen = false;
+  screenSharing = false; isAdmin = false; adminIdentity = null;
+  $('chat-panel').classList.remove('open');
+  $('participants-panel').classList.remove('open');
+  $('chat-toggle-btn').classList.remove('active');
+  $('participants-btn').classList.remove('active');
+  $('unread-badge').classList.remove('show');
+  $('admin-controls').classList.remove('show');
+  $('meeting-code-btn').style.display = 'none';
+  $('reconnecting-overlay').classList.remove('show');
+  $('empty-room-msg').style.display = 'none';
+  micEnabled = camEnabled = true; localDisplayName = '';
+  if (gridObserver) { gridObserver.disconnect(); gridObserver = null; }
+  stopMeetingTimer();
+  $('room').style.display  = 'none';
+  $('lobby').style.display = 'flex';
+  initPreview();
 }
 
-/* ════════════════════════════════════════════
-   KEYBOARD
-════════════════════════════════════════════ */
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Enter' && document.getElementById('lobby').style.display !== 'none') { if (document.activeElement?.tagName !== 'TEXTAREA') joinRoom(); return; }
+/* ══════════════════════════════════════════════
+   PARTICIPANT LIST PANEL
+══════════════════════════════════════════════ */
+function toggleParticipants() {
+  participantsOpen = !participantsOpen;
+  if (participantsOpen && chatOpen) toggleChat();
+  $('participants-panel').classList.toggle('open', participantsOpen);
+  $('participants-btn').classList.toggle('active', participantsOpen);
+  if (participantsOpen) updateParticipantList();
+}
+
+function updateParticipantList() {
+  if (!lkRoom || !participantsOpen) return;
+  const list = $('participant-list');
+  list.innerHTML = '';
+  list.appendChild(createParticipantItem(lkRoom.localParticipant, true));
+  for (const [, p] of lkRoom.remoteParticipants) list.appendChild(createParticipantItem(p, false));
+}
+
+function createParticipantItem(participant, isLocal) {
+  const name = participant.name || participant.identity;
+  const item = document.createElement('div');
+  item.className = 'participant-item';
+  const isMicMuted = !participant.isMicrophoneEnabled;
+  const isCamOff = !participant.isCameraEnabled;
+  const pIsAdmin = isLocal && isAdmin;
+
+  item.innerHTML = `
+    <div class="p-avatar">${escHtml(getInitials(name))}</div>
+    <div class="p-info">
+      <div class="p-name">
+        ${escHtml(name)}
+        ${isLocal ? '<span class="p-you">YOU</span>' : ''}
+        ${pIsAdmin ? '<span class="p-admin">ADMIN</span>' : ''}
+      </div>
+      <div class="p-status">
+        <span class="status-icon ${isMicMuted ? 'off' : ''}">${isMicMuted ? ICONS.micOff : ICONS.micOn}</span>
+        <span class="status-icon ${isCamOff ? 'off' : ''}">${isCamOff ? ICONS.videoOff : ICONS.videoOn}</span>
+      </div>
+    </div>
+    ${(!isLocal && isAdmin) ? `<button class="p-remove-btn visible" onclick="removeParticipant('${escHtml(participant.identity)}')" aria-label="Remove ${escHtml(name)}" title="Remove participant">${ICONS.x}</button>` : ''}
+  `;
+  return item;
+}
+
+/* ══════════════════════════════════════════════
+   ADMIN CONTROLS
+══════════════════════════════════════════════ */
+async function removeParticipant(identity) {
+  if (!isAdmin || !lkRoom || !currentMeetingCode) return;
+  try {
+    const res = await fetch('/remove-participant', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ meeting_code: currentMeetingCode, admin_identity: lkRoom.localParticipant.identity, participant_identity: identity }) });
+    if (!res.ok) { const err = await res.json().catch(() => ({})); throw new Error(err.detail || 'Failed'); }
+    await publishReliableData(textEncoder.encode(JSON.stringify({ type: 'kick', target: identity })));
+    showToast('Participant removed');
+  } catch(e) { showToast('Failed to remove participant'); console.error(e); }
+}
+
+async function muteAllParticipants() {
+  if (!isAdmin || !lkRoom) return;
+  await publishReliableData(textEncoder.encode(JSON.stringify({ type: 'mute_all', from: lkRoom.localParticipant.identity })));
+  showToast('Mute all request sent');
+}
+
+async function endMeetingForAll() {
+  if (!isAdmin || !lkRoom) return;
+  if (!confirm('End meeting for all participants?')) return;
+  await publishReliableData(textEncoder.encode(JSON.stringify({ type: 'end_meeting', from: lkRoom.localParticipant.identity })));
+  setTimeout(() => leaveRoom(), 1500);
+}
+
+function copyMeetingLink() {
+  if (!currentMeetingCode) return;
+  navigator.clipboard.writeText(`${location.origin}/join/${currentMeetingCode}`)
+    .then(() => showToast('Meeting link copied!'))
+    .catch(() => showToast('Could not copy link'));
+}
+
+/* ══════════════════════════════════════════════
+   CHAT
+══════════════════════════════════════════════ */
+function toggleChat() {
+  chatOpen = !chatOpen;
+  if (chatOpen && participantsOpen) toggleParticipants();
+  $('chat-panel').classList.toggle('open', chatOpen);
+  $('chat-toggle-btn').classList.toggle('active', chatOpen);
+  if (chatOpen) { unreadCount = 0; $('unread-badge').classList.remove('show'); scrollChat(); setTimeout(() => $('chat-input').focus(), 300); }
+}
+
+async function sendChatMessage() {
   if (!lkRoom) return;
-  if ((e.ctrlKey || e.metaKey) && e.key === 'd') { e.preventDefault(); toggleMic(); }
-  if ((e.ctrlKey || e.metaKey) && e.key === 'e') { e.preventDefault(); toggleCam(); }
-});
-
-document.getElementById('chat-input').addEventListener('input', function() { autoResize(this); });
-document.getElementById('chat-input').addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChatMessage(); } });
-
-document.addEventListener('click', (e) => {
-  if (window.innerWidth > 900 || !sidebarOpen) return;
-  const sb = document.getElementById('room-sidebar'), ctrl = document.querySelector('.room-controls');
-  if (!sb.contains(e.target) && !ctrl.contains(e.target)) toggleSidebar(activeTab);
-});
-
-/* ════════════════════════════════════════════
-   INITIALIZATION
-════════════════════════════════════════════ */
-// Handle meeting code from URL on page load
-document.addEventListener('DOMContentLoaded', () => {
-  handleMeetingCodeUrl();
-});
-
-// If DOM is already loaded (cached page)
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
-    handleMeetingCodeUrl();
-  });
-} else {
-  handleMeetingCodeUrl();
+  const input = $('chat-input');
+  const text = input.value.trim();
+  if (!text) return;
+  const message = { type: 'chat', text, sender: localDisplayName || lkRoom.localParticipant.name || 'You', ts: new Date().toISOString() };
+  try {
+    await publishReliableData(textEncoder.encode(JSON.stringify(message)));
+    appendChatMessage({ sender: message.sender, text, isSelf: true, timestamp: message.ts });
+    input.value = ''; input.style.height = ''; input.focus();
+  } catch(e) { showToast('Could not send message'); }
 }
+
+async function publishReliableData(data) {
+  try { await lkRoom.localParticipant.publishData(data, { reliable: true }); }
+  catch (err) { const kind = LivekitClient.DataPacket_Kind?.RELIABLE; if (kind === undefined) throw err; await lkRoom.localParticipant.publishData(data, kind); }
+}
+
+function onDataReceived(payload, participant) {
+  try {
+    const parsed = JSON.parse(textDecoder.decode(payload));
+    if (!parsed || !parsed.type) return;
+    if (parsed.type === 'chat' && parsed.text) {
+      const sender = parsed.sender || participant?.name || participant?.identity || 'Participant';
+      appendChatMessage({ sender, text: String(parsed.text).slice(0, 1000), isSelf: false, timestamp: parsed.ts || new Date() });
+      if (!chatOpen) playMessageSound();
+      return;
+    }
+    if (parsed.type === 'kick' && parsed.target === lkRoom?.localParticipant?.identity) { showToast('You have been removed from the meeting'); setTimeout(() => leaveRoom(), 1000); return; }
+    if (parsed.type === 'mute_all' && parsed.from !== lkRoom?.localParticipant?.identity) { if (micEnabled) { toggleMic(); showToast('Admin muted everyone'); } return; }
+    if (parsed.type === 'end_meeting' && parsed.from !== lkRoom?.localParticipant?.identity) { showToast('Admin ended the meeting'); setTimeout(() => leaveRoom(), 2000); return; }
+  } catch(_) {}
+}
+
+function appendChatMessage({ sender, text, isSelf, timestamp }) {
+  const list = $('chat-messages');
+  const empty = $('chat-empty'); if (empty) empty.remove();
+  const div = document.createElement('div');
+  div.className = `chat-msg ${isSelf ? 'self' : 'other'}`;
+  div.innerHTML = `<div class="chat-meta"><span class="chat-sender">${escHtml(sender)}</span><span>${fmtTime(timestamp)}</span></div><div class="chat-text"></div>`;
+  div.querySelector('.chat-text').textContent = text;
+  list.appendChild(div);
+  scrollChat();
+  if (!chatOpen && !isSelf) { unreadCount++; const badge = $('unread-badge'); badge.textContent = unreadCount > 9 ? '9+' : unreadCount; badge.classList.add('show'); }
+}
+
+function addSysMsg(safeText) {
+  const div = document.createElement('div');
+  div.className = 'chat-sys-msg';
+  div.textContent = safeText;
+  $('chat-messages').appendChild(div);
+  scrollChat();
+}
+
+function scrollChat() { const el = $('chat-messages'); el.scrollTop = el.scrollHeight; }
+function autoResizeChat(el) { el.style.height = ''; el.style.height = Math.min(el.scrollHeight, 90) + 'px'; }
+
+/* ══════════════════════════════════════════════
+   KEYBOARD SHORTCUTS
+══════════════════════════════════════════════ */
+function toggleShortcuts() { $('shortcuts-modal').classList.toggle('show'); }
+
+document.addEventListener('keydown', e => {
+  const tag = document.activeElement?.tagName;
+  const isTyping = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+
+  if (e.key === 'Enter' && $('lobby').style.display !== 'none') {
+    if (isTyping && ['room-input','name-input'].includes(document.activeElement.id)) { e.preventDefault(); joinRoom(); }
+    return;
+  }
+  if (e.key === 'Enter' && !e.shiftKey && document.activeElement?.id === 'chat-input') { e.preventDefault(); sendChatMessage(); return; }
+  if (e.key === 'Escape' && $('shortcuts-modal').classList.contains('show')) { toggleShortcuts(); return; }
+  if (isTyping) return;
+  if (!lkRoom) return;
+
+  switch (e.key.toLowerCase()) {
+    case 'm': toggleMic(); break;
+    case 'v': toggleCam(); break;
+    case 's': toggleScreenShare(); break;
+    case 'c': toggleChat(); break;
+    case 'p': toggleParticipants(); break;
+    case 'i': copyMeetingLink(); break;
+    case '?': toggleShortcuts(); break;
+    case 'escape':
+      if (chatOpen) toggleChat();
+      else if (participantsOpen) toggleParticipants();
+      else if (confirm('Leave the meeting?')) leaveRoom();
+      break;
+  }
+});
+
+/* ══════════════════════════════════════════════
+   BOOT
+══════════════════════════════════════════════ */
+initPreview();
+handleMeetingCodeUrl();
+// Initialize control button icons after DOM is ready
+setTimeout(() => updateControlState(), 0);
 </script>
 </body>
 </html>

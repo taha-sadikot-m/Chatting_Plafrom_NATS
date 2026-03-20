@@ -1,43 +1,42 @@
 """
-MeetKit — Python Backend (server.py)
-=====================================
-Production-grade FastAPI server that:
-  1. Downloads livekit-client.js once and serves it locally
-  2. Serves the frontend HTML
-  3. Issues signed LiveKit JWT tokens
-  4. Includes structured logging, request validation, health & readiness checks
-
-Run:
-    python server.py
-Then open  http://localhost:8080  in two browser tabs.
+MeetKit — Python Backend
+========================
+Production-grade FastAPI server for LiveKit video meetings.
 
 Environment variables (via .env):
-    LIVEKIT_URL         wss://your-project.livekit.cloud
-    LIVEKIT_API_KEY     your_api_key
-    LIVEKIT_API_SECRET  your_api_secret
+    LIVEKIT_URL         wss://your-project.livekit.cloud  (REQUIRED)
+    LIVEKIT_API_KEY     your_api_key                       (REQUIRED)
+    LIVEKIT_API_SECRET  your_api_secret                    (REQUIRED)
     PORT                8080  (optional)
     LOG_LEVEL           info  (optional: debug | info | warning | error)
     TOKEN_TTL_HOURS     1     (optional, default 1)
     ALLOWED_ORIGINS     *     (optional, comma-separated list for strict CORS)
+    ROOM_TTL_HOURS      24    (optional, room auto-cleanup interval)
 """
 
 import os
 import sys
+import re
 import time
+import json
 import datetime
 import uuid
 import logging
+import secrets
+import asyncio
 import urllib.request
 import random
 import string
 from pathlib import Path
 from typing import Optional
+from collections import defaultdict
 
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException, Request, status
 from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 from pydantic import BaseModel, Field, field_validator
 
 # ── LiveKit token generation ───────────────────────────────────────────────────
@@ -55,18 +54,20 @@ logger = logging.getLogger("meetkit")
 # ── Load environment ───────────────────────────────────────────────────────────
 load_dotenv()
 
-LIVEKIT_URL        = os.getenv("LIVEKIT_URL",        "wss://your-project.livekit.cloud")
-LIVEKIT_API_KEY    = os.getenv("LIVEKIT_API_KEY",    "devkey")
-LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET", "devsecret")
+LIVEKIT_URL        = os.getenv("LIVEKIT_URL")
+LIVEKIT_API_KEY    = os.getenv("LIVEKIT_API_KEY")
+LIVEKIT_API_SECRET = os.getenv("LIVEKIT_API_SECRET")
 TOKEN_TTL_HOURS    = int(os.getenv("TOKEN_TTL_HOURS", "1"))
+ROOM_TTL_HOURS     = int(os.getenv("ROOM_TTL_HOURS", "24"))
 PORT               = int(os.getenv("PORT", "8080"))
 
-# Warn on obvious dev defaults in a production-looking setup
-if LIVEKIT_API_KEY == "devkey" or LIVEKIT_API_SECRET == "devsecret":
-    logger.warning(
-        "Using default API credentials. Set LIVEKIT_API_KEY and "
-        "LIVEKIT_API_SECRET in your .env file before going to production."
+# Fail fast if credentials are missing
+if not LIVEKIT_URL or not LIVEKIT_API_KEY or not LIVEKIT_API_SECRET:
+    logger.critical(
+        "LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET must be set. "
+        "Add them to your .env file or environment variables."
     )
+    sys.exit(1)
 
 # ── CORS origins ───────────────────────────────────────────────────────────────
 _raw_origins = os.getenv("ALLOWED_ORIGINS", "*")
@@ -105,15 +106,75 @@ else:
     size_kb = LIVEKIT_JS.stat().st_size // 1024
     logger.info("livekit-client.js ready (%d KB)", size_kb)
 
+# ── Rate Limiting ──────────────────────────────────────────────────────────────
+_rate_limits: dict[str, list[float]] = defaultdict(list)
+
+def _check_rate_limit(client_ip: str, endpoint: str, max_requests: int, window_seconds: int = 60):
+    """Simple in-memory rate limiter. Raises 429 if limit exceeded."""
+    key = f"{client_ip}:{endpoint}"
+    now = time.time()
+    # Prune old entries
+    _rate_limits[key] = [t for t in _rate_limits[key] if now - t < window_seconds]
+    if len(_rate_limits[key]) >= max_requests:
+        raise HTTPException(
+            status_code=429,
+            detail=f"Too many requests. Limit: {max_requests} per {window_seconds}s."
+        )
+    _rate_limits[key].append(now)
+
+
+# ── Security Middleware ───────────────────────────────────────────────────────
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Adds security headers (CSP, X-Frame-Options, etc.) to all responses."""
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(self), microphone=(self), display-capture=(self)"
+        csp = (
+            "default-src 'self'; "
+            "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; "
+            "font-src 'self' https://fonts.gstatic.com; "
+            "connect-src 'self' wss: https:; "
+            "img-src 'self' data: blob:; "
+            "media-src 'self' blob:; "
+            "frame-ancestors 'none';"
+        )
+        response.headers["Content-Security-Policy"] = csp
+        return response
+
+
+class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
+    """Rejects request bodies larger than max_bytes."""
+    def __init__(self, app, max_bytes: int = 1_048_576):
+        super().__init__(app)
+        self.max_bytes = max_bytes
+
+    async def dispatch(self, request: Request, call_next):
+        content_length = request.headers.get("content-length")
+        if content_length and int(content_length) > self.max_bytes:
+            return JSONResponse(
+                status_code=413,
+                content={"detail": "Request body too large."},
+            )
+        return await call_next(request)
+
+
 # ── FastAPI application ────────────────────────────────────────────────────────
 app = FastAPI(
     title="MeetKit",
     description="Production LiveKit meeting room server",
-    version="1.0.0",
-    docs_url="/docs",
+    version="2.0.0",
+    docs_url=None,      # Disable docs in production
     redoc_url=None,
 )
 
+# Order matters: outermost middleware runs first
+app.add_middleware(RequestSizeLimitMiddleware, max_bytes=1_048_576)  # 1 MB
+app.add_middleware(SecurityHeadersMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -125,20 +186,39 @@ app.add_middleware(
 # Serve /static/* locally (livekit-client.js etc.)
 app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
-# ── Startup log ───────────────────────────────────────────────────────────────
+# ── Startup / Shutdown ────────────────────────────────────────────────────────
+_cleanup_task = None
+
 @app.on_event("startup")
 async def on_startup():
+    global _cleanup_task
     logger.info("MeetKit starting on port %d", PORT)
     logger.info("LiveKit server : %s", LIVEKIT_URL)
     logger.info("CORS origins   : %s", ALLOWED_ORIGINS)
     logger.info("Token TTL      : %d h", TOKEN_TTL_HOURS)
+    logger.info("Room TTL       : %d h", ROOM_TTL_HOURS)
+    _cleanup_task = asyncio.create_task(_room_cleanup_loop())
+
+@app.on_event("shutdown")
+async def on_shutdown():
+    if _cleanup_task:
+        _cleanup_task.cancel()
 
 # ── Request / Response models ──────────────────────────────────────────────────
+def _validate_name(v: str) -> str:
+    """Shared name validator: alphanumeric + hyphens/underscores/dots/spaces."""
+    allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ")
+    if not all(c in allowed for c in v):
+        raise ValueError("Only letters, numbers, hyphens, underscores, dots, and spaces are allowed.")
+    return v
+
+
 class TokenRequest(BaseModel):
     room_name: str = Field(..., min_length=1, max_length=128)
     participant_name: str = Field(..., min_length=1, max_length=64)
     room_id: Optional[str] = Field(None, min_length=1, max_length=36)
     meeting_code: Optional[str] = Field(None, min_length=1, max_length=20)
+    admin_secret: Optional[str] = Field(None, max_length=64)
 
     @field_validator("room_name", "participant_name", mode="before")
     @classmethod
@@ -148,11 +228,7 @@ class TokenRequest(BaseModel):
     @field_validator("room_name")
     @classmethod
     def sanitise_room_name(cls, v: str) -> str:
-        # Allow alphanumeric, hyphens, underscores, dots, spaces
-        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ")
-        if not all(c in allowed for c in v):
-            raise ValueError("Room name may only contain letters, numbers, hyphens, underscores, dots, and spaces.")
-        return v
+        return _validate_name(v)
 
 
 class TokenResponse(BaseModel):
@@ -164,9 +240,9 @@ class TokenResponse(BaseModel):
 
 class RoomCreateRequest(BaseModel):
     room_name: str = Field(..., min_length=1, max_length=128)
-    creator_name: str = Field(..., min_length=1, max_length=128)  # NEW: Creator's display name
-    
-    @field_validator("room_name", mode="before")
+    creator_name: str = Field(..., min_length=1, max_length=128)
+
+    @field_validator("room_name", "creator_name", mode="before")
     @classmethod
     def strip_whitespace(cls, v: str) -> str:
         return v.strip()
@@ -174,16 +250,7 @@ class RoomCreateRequest(BaseModel):
     @field_validator("room_name")
     @classmethod
     def sanitise_room_name(cls, v: str) -> str:
-        # Allow alphanumeric, hyphens, underscores, dots, spaces
-        allowed = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_. ")
-        if not all(c in allowed for c in v):
-            raise ValueError("Room name may only contain letters, numbers, hyphens, underscores, dots, and spaces.")
-        return v
-    
-    @field_validator("creator_name", mode="before")
-    @classmethod
-    def strip_creator_name(cls, v: str) -> str:
-        return v.strip()
+        return _validate_name(v)
 
 
 class RoomCreateResponse(BaseModel):
@@ -191,39 +258,41 @@ class RoomCreateResponse(BaseModel):
     room_name: str
     meeting_url: str
     meeting_code: str
+    admin_secret: str
 
 
 # ── In-memory room registry (stores code → room mapping) ──────────────────────
-# In production, use a database like PostgreSQL or Redis
-_room_registry = {}  # { "code": { "room_name": str, "room_id": str } }
+_room_registry: dict[str, dict] = {}
+
+# Meeting code format validation
+_MEETING_CODE_RE = re.compile(r"^[a-z0-9]{3}-[a-z0-9]{3}-[a-z0-9]{3}$")
 
 
-def generate_meeting_code(length: int = 9) -> str:
-    """
-    Generate a Google Meet-style code: xxx-yyy-zzz
-    Format: 3 lowercase letters - 3 lowercase letters - 3 lowercase letters
-    Example: abc-def-ghi
-    """
-    parts = []
-    for _ in range(3):
-        part = ''.join(random.choices(string.ascii_lowercase + string.digits, k=3))
-        parts.append(part)
-    code = '-'.join(parts)
-    
-    # Ensure code is unique
-    while code in _room_registry:
-        parts = []
-        for _ in range(3):
-            part = ''.join(random.choices(string.ascii_lowercase + string.digits, k=3))
-            parts.append(part)
+def generate_meeting_code() -> str:
+    """Generate a Google Meet-style code: xxx-yyy-zzz using cryptographic randomness."""
+    charset = string.ascii_lowercase + string.digits
+    for _ in range(100):  # bounded retries
+        parts = [''.join(secrets.choice(charset) for _ in range(3)) for _ in range(3)]
         code = '-'.join(parts)
-    
-    return code
+        if code not in _room_registry:
+            return code
+    raise HTTPException(status_code=503, detail="Could not generate unique meeting code.")
 
 
-# ── Participant tracking for admin controls ────────────────────────────────────
-# Format: { "room_name": { "participant_id": "identity" } }
-_room_participants = {}
+async def _room_cleanup_loop():
+    """Background task to purge expired rooms."""
+    while True:
+        await asyncio.sleep(3600)  # Run every hour
+        now = datetime.datetime.now()
+        expired = [
+            code for code, data in _room_registry.items()
+            if (now - datetime.datetime.fromisoformat(data["created_at"])).total_seconds()
+               > ROOM_TTL_HOURS * 3600
+        ]
+        for code in expired:
+            del _room_registry[code]
+        if expired:
+            logger.info("Cleaned up %d expired rooms", len(expired))
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────────
@@ -232,20 +301,23 @@ _room_participants = {}
 async def join_with_code(meeting_code: str):
     """
     Serve the frontend pre-filled with room details from the meeting code.
-    This is used when accessing a shared meeting link.
     """
+    # Validate meeting code format to prevent injection
+    if not _MEETING_CODE_RE.match(meeting_code):
+        raise HTTPException(status_code=400, detail="Invalid meeting code format.")
+
     html_path = Path(__file__).parent / "index.html"
     if not html_path.exists():
         logger.error("index.html not found at %s", html_path)
         raise HTTPException(status_code=404, detail="index.html not found")
-    
+
     html_content = html_path.read_text(encoding="utf-8")
-    
-    # Pass meeting code to frontend
-    # Frontend will look up the room details and auto-join
+
+    # Safe injection using json.dumps for proper JS string escaping
+    safe_code = json.dumps(meeting_code)
     script_injection = f"""
     <script>
-      window.__meetingCode = '{meeting_code}';
+      window.__meetingCode = {safe_code};
     </script>
     """
     
@@ -302,18 +374,20 @@ async def create_room(req: RoomCreateRequest, request: Request):
       - meeting_url: Shareable URL to join the room
     """
     client_ip = request.client.host if request.client else "unknown"
+    _check_rate_limit(client_ip, "create-room", max_requests=5)
+
     room_id = str(uuid.uuid4())
     meeting_code = generate_meeting_code()
-    
-    # Store the mapping in registry
-    # CRITICAL: Store creator name so we can identify them when they join
+    admin_secret = secrets.token_urlsafe(32)
+
     _room_registry[meeting_code] = {
         "room_name": req.room_name,
         "room_id": room_id,
         "created_at": datetime.datetime.now().isoformat(),
-        "creator_name": req.creator_name,  # Room creator's display name
-        "admin_identity": None,  # Will be set when creator joins
-        "admin_name": None  # Display name of admin
+        "creator_name": req.creator_name,
+        "admin_secret": admin_secret,
+        "admin_identity": None,
+        "admin_name": None,
     }
     
     logger.info(
@@ -332,7 +406,8 @@ async def create_room(req: RoomCreateRequest, request: Request):
         room_id=room_id,
         room_name=req.room_name,
         meeting_code=meeting_code,
-        meeting_url=meeting_url
+        meeting_url=meeting_url,
+        admin_secret=admin_secret,
     )
 
 
@@ -349,11 +424,11 @@ async def get_token(req: TokenRequest, request: Request):
     If meeting_code is provided, room details are looked up from the registry.
     """
     client_ip = request.client.host if request.client else "unknown"
-    
-    # If meeting code provided, look up room details
+    _check_rate_limit(client_ip, "token", max_requests=15)
+
     room_name = req.room_name
     room_id = req.room_id
-    
+
     if req.meeting_code:
         if req.meeting_code not in _room_registry:
             logger.warning("Invalid meeting code — code=%r  ip=%s", req.meeting_code, client_ip)
@@ -364,42 +439,35 @@ async def get_token(req: TokenRequest, request: Request):
         room_data = _room_registry[req.meeting_code]
         room_name = room_data["room_name"]
         room_id = room_data["room_id"]
-    
+
     logger.info(
         "Token request — room=%r  participant=%r  room_id=%r  code=%r  ip=%s",
         room_name, req.participant_name, room_id, req.meeting_code, client_ip,
     )
 
-    # Unique identity prevents collisions when the same display name joins twice
-    display_name     = req.participant_name
-    unique_identity  = f"{display_name}-{uuid.uuid4().hex[:8]}"
-    
-    # Track if this user is admin
+    display_name    = req.participant_name
+    unique_identity = f"{display_name}-{uuid.uuid4().hex}"
+
     is_admin = False
     admin_identity = None
 
-    # If joining via meeting code, check/set admin
+    # Secure admin identification via admin_secret token
     if req.meeting_code and req.meeting_code in _room_registry:
         room_data = _room_registry[req.meeting_code]
-        # CRITICAL FIX: Creator becomes admin, not first joiner
-        # Check if this person is the room creator
-        is_creator = (display_name == room_data["creator_name"])
-        
-        if is_creator:
-            # Creator is admin
+
+        if req.admin_secret and secrets.compare_digest(req.admin_secret, room_data["admin_secret"]):
+            # Verified admin via secret token
             room_data["admin_identity"] = unique_identity
             room_data["admin_name"] = display_name
             is_admin = True
-            logger.info("Admin assigned to creator — meeting_code=%r  admin=%r", req.meeting_code, display_name)
-        elif not room_data["admin_identity"]:
-            # Fallback: first non-creator to join becomes admin (shouldn't happen if creator joins)
+            logger.info("Admin verified via secret — code=%r  admin=%r", req.meeting_code, display_name)
+        elif not room_data["admin_identity"] and not req.admin_secret:
+            # First joiner becomes admin only if no admin set yet (no secret needed)
             room_data["admin_identity"] = unique_identity
             room_data["admin_name"] = display_name
             is_admin = True
-            logger.info("Admin assigned to first joiner (creator didn't join) — meeting_code=%r  admin=%r", req.meeting_code, display_name)
+            logger.info("Admin assigned to first joiner — code=%r  admin=%r", req.meeting_code, display_name)
         else:
-            # Neither creator nor first joiner - check if this is a subsequent join
-            is_admin = (room_data["admin_identity"] == unique_identity)
             admin_identity = room_data["admin_identity"]
     
     try:
@@ -436,7 +504,7 @@ async def get_token(req: TokenRequest, request: Request):
 
 
 class RemoveParticipantRequest(BaseModel):
-    room_name: str = Field(..., min_length=1, max_length=128)
+    meeting_code: str = Field(..., min_length=1, max_length=20)
     admin_identity: str = Field(..., min_length=1)
     participant_identity: str = Field(..., min_length=1)
 
@@ -444,33 +512,37 @@ class RemoveParticipantRequest(BaseModel):
 @app.post("/remove-participant", include_in_schema=False)
 async def remove_participant(req: RemoveParticipantRequest, request: Request):
     """
-    Remove a participant from a room. Only admin can remove others.
-    
-    This notifies the frontend, which disconnects the participant.
-    For backend enforcement, use LiveKit server API directly.
+    Remove a participant from a room. Only verified admin can remove others.
+    Validates admin_identity against the stored admin for the meeting.
     """
     client_ip = request.client.host if request.client else "unknown"
-    
+
     logger.info(
-        "Remove request — room=%r  admin=%r  target=%r  ip=%s",
-        req.room_name, req.admin_identity, req.participant_identity, client_ip,
+        "Remove request — code=%r  admin=%r  target=%r  ip=%s",
+        req.meeting_code, req.admin_identity, req.participant_identity, client_ip,
     )
-    
-    # Validate request - check admin status by matching stored registry
-    # In production, you'd verify the admin identity against your session/jwt
-    
+
+    # Validate meeting code exists
+    if req.meeting_code not in _room_registry:
+        raise HTTPException(status_code=404, detail="Meeting not found.")
+
+    room_data = _room_registry[req.meeting_code]
+
+    # Verify the requester is actually the admin
+    if room_data["admin_identity"] != req.admin_identity:
+        logger.warning("Unauthorized remove attempt — code=%r  claimed_admin=%r  real_admin=%r",
+                       req.meeting_code, req.admin_identity, room_data.get("admin_identity"))
+        raise HTTPException(status_code=403, detail="Only the room admin can remove participants.")
+
     if req.admin_identity == req.participant_identity:
-        raise HTTPException(
-            status_code=400,
-            detail="Admin cannot remove themselves. Use Leave button instead."
-        )
-    
-    logger.info("Participant removal authorized — room=%r  target=%r", req.room_name, req.participant_identity)
-    
+        raise HTTPException(status_code=400, detail="Admin cannot remove themselves.")
+
+    logger.info("Participant removal authorized — code=%r  target=%r", req.meeting_code, req.participant_identity)
+
     return {
         "status": "removed",
-        "message": f"Participant {req.participant_identity} removed from room",
-        "room": req.room_name
+        "message": f"Participant removed from room",
+        "meeting_code": req.meeting_code,
     }
 
 
@@ -487,9 +559,9 @@ async def ready():
     Returns 503 if credentials look unconfigured.
     """
     issues = []
-    if LIVEKIT_API_KEY in ("devkey", ""):
+    if not LIVEKIT_API_KEY:
         issues.append("LIVEKIT_API_KEY not configured")
-    if LIVEKIT_API_SECRET in ("devsecret", ""):
+    if not LIVEKIT_API_SECRET:
         issues.append("LIVEKIT_API_SECRET not configured")
     if not LIVEKIT_JS.exists():
         issues.append("livekit-client.js missing")
