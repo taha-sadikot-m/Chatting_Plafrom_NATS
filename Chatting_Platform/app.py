@@ -94,11 +94,20 @@ async def _nats_init():
     """Connect to NATS and subscribe to all chat/presence subjects."""
     global _nats_client
     try:
+        async def _nats_error_cb(e):
+            logger.error(f"NATS error: {e}")
+
+        async def _nats_closed_cb():
+            logger.warning("NATS connection closed")
+
+        async def _nats_reconnected_cb():
+            logger.info("NATS reconnected")
+
         _nats_client = await nats.connect(
             NATS_URL,
-            error_cb=lambda e: logger.error(f"NATS error: {e}"),
-            closed_cb=lambda: logger.warning("NATS connection closed"),
-            reconnected_cb=lambda: logger.info("NATS reconnected"),
+            error_cb=_nats_error_cb,
+            closed_cb=_nats_closed_cb,
+            reconnected_cb=_nats_reconnected_cb,
         )
         logger.info(f"✓ NATS connected: {NATS_URL}")
 
