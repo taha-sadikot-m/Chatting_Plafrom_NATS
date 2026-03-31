@@ -1,10 +1,8 @@
 """
 Chat Platform - Flask Application with AWS Cognito Authentication
-Uses working cognito_auth.py from parent directory
 """
 
 import os
-import sys
 import logging
 import uuid
 import time
@@ -24,8 +22,6 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-# Import working cognito_auth from PARENT directory
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from cognito_auth import (
     verify_cognito_token,
     get_cognito_login_url,
